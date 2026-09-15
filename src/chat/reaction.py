@@ -3,39 +3,19 @@ import tkinter as tk
 from config import (
     CHAT_BACKGROUND,
     TEXT,
-    MUTED_TEXT,
-    BUTTON,
-    BUTTON_HOVER
+    BUTTON
 )
 
-
-# =========================
-# REACTION SETTINGS
-# =========================
 
 REACTIONS = [
     "❤️",
     "😂",
-    "👍",
     "😭",
-    "🥰",
-    "😮"
+    "😮",
+    "😡",
+    "👍"
 ]
 
-REACTION_FONT = (
-    "Arial",
-    13
-)
-
-REACTION_BUTTON_FONT = (
-    "Arial",
-    12
-)
-
-
-# =========================
-# REACTION PICKER
-# =========================
 
 class ReactionPicker(tk.Frame):
 
@@ -47,18 +27,14 @@ class ReactionPicker(tk.Frame):
 
         super().__init__(
             parent,
-            bg=CHAT_BACKGROUND,
-            bd=0,
-            highlightthickness=0
+            bg="white",
+            bd=1,
+            relief="solid"
         )
 
         self.on_reaction = on_reaction
 
         self._create_buttons()
-
-    # =========================
-    # CREATE
-    # =========================
 
     def _create_buttons(self):
 
@@ -67,51 +43,39 @@ class ReactionPicker(tk.Frame):
             button = tk.Button(
                 self,
                 text=reaction,
-                font=REACTION_BUTTON_FONT,
-                bg=CHAT_BACKGROUND,
+                font=(
+                    "Arial",
+                    13
+                ),
+                bg="white",
                 fg=TEXT,
-                activebackground=BUTTON_HOVER,
-                activeforeground=TEXT,
+                activebackground="#FFF0F4",
                 relief="flat",
                 bd=0,
                 cursor="hand2",
-                command=lambda emoji=reaction:
-                    self._select_reaction(emoji)
+                command=lambda r=reaction:
+                    self._select_reaction(r)
             )
 
             button.pack(
                 side="left",
-                padx=2,
-                pady=2
+                padx=3,
+                pady=3
             )
 
-    # =========================
-    # SELECT
-    # =========================
+    def _select_reaction(self, reaction):
 
-    def _select_reaction(
-        self,
-        reaction
-    ):
+        self.on_reaction(
+            reaction
+        )
 
-        if self.on_reaction:
-
-            self.on_reaction(
-                reaction
-            )
-
-
-# =========================
-# REACTION DISPLAY
-# =========================
 
 class ReactionDisplay(tk.Frame):
 
     def __init__(
         self,
         parent,
-        reactions,
-        on_reaction_click=None
+        reactions
     ):
 
         super().__init__(
@@ -120,58 +84,62 @@ class ReactionDisplay(tk.Frame):
         )
 
         self.reactions = reactions
-        self.on_reaction_click = (
-            on_reaction_click
-        )
 
         self._create_display()
-
-    # =========================
-    # CREATE
-    # =========================
 
     def _create_display(self):
 
         for reaction, count in self.reactions.items():
 
+            if count <= 0:
+                continue
+
             text = (
                 f"{reaction} {count}"
             )
 
-            button = tk.Button(
+            label = tk.Label(
                 self,
                 text=text,
                 font=(
                     "Arial",
                     9
                 ),
-                bg="#FFE0E8",
+                bg="#FFF0F4",
                 fg=TEXT,
-                activebackground="#FFD0DC",
-                relief="flat",
-                bd=0,
-                cursor="hand2",
-                command=lambda emoji=reaction:
-                    self._clicked(emoji)
+                padx=7,
+                pady=2,
+                relief="flat"
             )
 
-            button.pack(
+            label.pack(
                 side="left",
-                padx=2,
-                pady=(2, 0)
+                padx=2
             )
 
-    # =========================
-    # CLICK
-    # =========================
 
-    def _clicked(
+class ReactionButton(tk.Button):
+
+    def __init__(
         self,
-        reaction
+        parent,
+        command
     ):
 
-        if self.on_reaction_click:
-
-            self.on_reaction_click(
-                reaction
-            )
+        super().__init__(
+            parent,
+            text="＋",
+            font=(
+                "Arial",
+                11,
+                "bold"
+            ),
+            bg="white",
+            fg=BUTTON,
+            activebackground="#FFF0F4",
+            activeforeground=BUTTON,
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            command=command
+        )

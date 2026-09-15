@@ -2,6 +2,19 @@ import tkinter as tk
 
 from .bubble import MessageBubble
 
+from .reaction import (
+    ReactionPicker,
+    ReactionDisplay,
+    ReactionButton
+)
+
+from .image import ChatImage
+
+from database import (
+    get_reactions,
+    add_reaction
+)
+
 from config import (
     CHAT_BACKGROUND,
     TEXT,
@@ -10,7 +23,7 @@ from config import (
 
 
 # =========================
-# MESSAGE SETTINGS
+# SETTINGS
 # =========================
 
 GROUP_SPACING = 14
@@ -41,7 +54,8 @@ class MessageRow(tk.Frame):
         self,
         parent,
         message,
-        is_me
+        is_me,
+        username
     ):
 
         super().__init__(
@@ -51,16 +65,23 @@ class MessageRow(tk.Frame):
 
         self.message = message
         self.is_me = is_me
+        self.username = username
 
         self.hide_job = None
+        self.reaction_hide_job = None
 
         self.bubble = None
+        self.image = None
         self.timestamp = None
+
+        self.reaction_button = None
+        self.reaction_picker = None
+        self.reaction_display = None
 
         self._create_row()
 
     # =========================
-    # CREATE ROW
+    # CREATE
     # =========================
 
     def _create_row(self):
@@ -74,20 +95,65 @@ class MessageRow(tk.Frame):
             fill="x"
         )
 
-        self.bubble = MessageBubble(
-            self.content_frame,
-            self.message.get(
-                "content",
-                ""
-            ),
-            self.is_me,
-            on_enter=self._show_timestamp,
-            on_leave=self._schedule_hide
+        message_type = self.message.get(
+            "message_type",
+            "text"
         )
 
-        self.bubble.pack(
-            side="right" if self.is_me else "left"
-        )
+        # -------------------------
+        # IMAGE
+        # -------------------------
+
+        if (
+            message_type == "image"
+            and self.message.get("image_url")
+        ):
+
+            self.image = ChatImage(
+                self.content_frame,
+                image_url=self.message.get(
+                    "image_url"
+                ),
+                on_enter=self._show_controls,
+                on_leave=self._schedule_hide
+            )
+
+            self.image.pack(
+                side=(
+                    "right"
+                    if self.is_me
+                    else "left"
+                )
+            )
+
+        # -------------------------
+        # TEXT
+        # -------------------------
+
+        else:
+
+            self.bubble = MessageBubble(
+                self.content_frame,
+                self.message.get(
+                    "content",
+                    ""
+                ),
+                self.is_me,
+                on_enter=self._show_controls,
+                on_leave=self._schedule_hide
+            )
+
+            self.bubble.pack(
+                side=(
+                    "right"
+                    if self.is_me
+                    else "left"
+                )
+            )
+
+        # -------------------------
+        # TIMESTAMP
+        # -------------------------
 
         self.timestamp = tk.Label(
             self,
@@ -108,6 +174,33 @@ class MessageRow(tk.Frame):
             "<Leave>",
             self._timestamp_leave
         )
+
+        # -------------------------
+        # REACTION BUTTON
+        # -------------------------
+
+        self.reaction_button = ReactionButton(
+            self,
+            self._show_reaction_picker
+        )
+
+        self.reaction_button.place_forget()
+
+        self.reaction_button.bind(
+            "<Enter>",
+            self._reaction_enter
+        )
+
+        self.reaction_button.bind(
+            "<Leave>",
+            self._reaction_leave
+        )
+
+        # -------------------------
+        # REACTIONS
+        # -------------------------
+
+        self._load_reactions()
 
     # =========================
     # TIMESTAMP
@@ -157,7 +250,9 @@ class MessageRow(tk.Frame):
             if hour == 0:
                 hour = 12
 
-            return f"{hour}:{minute} {suffix}"
+            return (
+                f"{hour}:{minute} {suffix}"
+            )
 
         except (
             ValueError,
@@ -165,10 +260,6 @@ class MessageRow(tk.Frame):
         ):
 
             return ""
-
-    # =========================
-    # SHOW TIMESTAMP
-    # =========================
 
     def _show_timestamp(self):
 
@@ -180,18 +271,28 @@ class MessageRow(tk.Frame):
             self.timestamp.winfo_reqwidth()
         )
 
-        bubble_width = (
-            self.bubble.winfo_reqwidth()
-        )
+        if self.bubble:
 
-        bubble_height = (
-            self.bubble.winfo_reqheight()
-        )
+            message_width = (
+                self.bubble.winfo_reqwidth()
+            )
+
+            message_height = (
+                self.bubble.winfo_reqheight()
+            )
+
+        else:
+
+            message_width = (
+                self.image.winfo_reqwidth()
+            )
+
+            message_height = (
+                self.image.winfo_reqheight()
+            )
 
         row_width = self.winfo_width()
 
-        # If Tkinter hasn't calculated the row yet,
-        # wait until the next GUI update.
         if row_width <= 1:
 
             self.after(
@@ -202,35 +303,26 @@ class MessageRow(tk.Frame):
             return
 
         center_y = (
-            bubble_height // 2
+            message_height // 2
         )
 
-        # -------------------------
-        # OTHER PERSON
-        # -------------------------
-        #
-        # 4:32 PM   [ Hello ]
-        #
         if not self.is_me:
 
             self.timestamp.place(
-                x=bubble_width + TIMESTAMP_GAP,
+                x=(
+                    message_width
+                    + TIMESTAMP_GAP
+                ),
                 y=center_y,
                 anchor="w"
             )
 
-        # -------------------------
-        # ME
-        # -------------------------
-        #
-        # [ Hello ]   4:32 PM
-        #
         else:
 
             self.timestamp.place(
                 x=(
                     row_width
-                    - bubble_width
+                    - message_width
                     - TIMESTAMP_GAP
                     - timestamp_width
                 ),
@@ -241,7 +333,82 @@ class MessageRow(tk.Frame):
         self.timestamp.lift()
 
     # =========================
-    # HIDE TIMESTAMP
+    # CONTROLS
+    # =========================
+
+    def _show_controls(self):
+
+        self._cancel_hide()
+
+        self._show_timestamp()
+
+        self.update_idletasks()
+
+        if self.bubble:
+
+            message_width = (
+                self.bubble.winfo_reqwidth()
+            )
+
+            message_height = (
+                self.bubble.winfo_reqheight()
+            )
+
+        else:
+
+            message_width = (
+                self.image.winfo_reqwidth()
+            )
+
+            message_height = (
+                self.image.winfo_reqheight()
+            )
+
+        row_width = self.winfo_width()
+
+        if row_width <= 1:
+
+            self.after(
+                1,
+                self._show_controls
+            )
+
+            return
+
+        button_width = (
+            self.reaction_button.winfo_reqwidth()
+        )
+
+        center_y = (
+            message_height // 2
+        )
+
+        if self.is_me:
+
+            x = (
+                row_width
+                - message_width
+                - button_width
+                - 6
+            )
+
+        else:
+
+            x = (
+                message_width
+                + 6
+            )
+
+        self.reaction_button.place(
+            x=x,
+            y=center_y,
+            anchor="w"
+        )
+
+        self.reaction_button.lift()
+
+    # =========================
+    # HIDE CONTROLS
     # =========================
 
     def _schedule_hide(self):
@@ -250,18 +417,20 @@ class MessageRow(tk.Frame):
 
         self.hide_job = self.after(
             TIMESTAMP_HIDE_DELAY,
-            self._hide_timestamp
+            self._hide_controls
         )
 
-    def _hide_timestamp(self):
+    def _hide_controls(self):
 
         self.timestamp.place_forget()
 
-        self.hide_job = None
+        if self.reaction_picker:
 
-    # =========================
-    # CANCEL HIDE
-    # =========================
+            self.reaction_picker.place_forget()
+
+        self.reaction_button.place_forget()
+
+        self.hide_job = None
 
     def _cancel_hide(self):
 
@@ -298,6 +467,191 @@ class MessageRow(tk.Frame):
 
         self._schedule_hide()
 
+    # =========================
+    # REACTION PICKER
+    # =========================
+
+    def _show_reaction_picker(self):
+
+        self._cancel_hide()
+
+        if self.reaction_picker:
+
+            self.reaction_picker.destroy()
+
+        self.reaction_picker = ReactionPicker(
+            self,
+            self._reaction_selected
+        )
+
+        self.update_idletasks()
+
+        picker_width = (
+            self.reaction_picker.winfo_reqwidth()
+        )
+
+        picker_height = (
+            self.reaction_picker.winfo_reqheight()
+        )
+
+        row_width = self.winfo_width()
+
+        if self.bubble:
+
+            message_width = (
+                self.bubble.winfo_reqwidth()
+            )
+
+            message_height = (
+                self.bubble.winfo_reqheight()
+            )
+
+        else:
+
+            message_width = (
+                self.image.winfo_reqwidth()
+            )
+
+            message_height = (
+                self.image.winfo_reqheight()
+            )
+
+        if self.is_me:
+
+            x = (
+                row_width
+                - message_width
+                - picker_width
+            )
+
+        else:
+
+            x = message_width
+
+        y = (
+            message_height
+            + 4
+        )
+
+        self.reaction_picker.place(
+            x=x,
+            y=y,
+            anchor="nw"
+        )
+
+        self.reaction_picker.lift()
+
+        self.reaction_picker.bind(
+            "<Enter>",
+            self._reaction_enter
+        )
+
+        self.reaction_picker.bind(
+            "<Leave>",
+            self._reaction_leave
+        )
+
+    # =========================
+    # REACTION SELECTED
+    # =========================
+
+    def _reaction_selected(
+        self,
+        reaction
+    ):
+
+        try:
+
+            add_reaction(
+                self.message["id"],
+                self.username,
+                reaction
+            )
+
+            self._load_reactions()
+
+        except Exception as error:
+
+            print()
+            print("==============================")
+            print("REACTION ERROR")
+            print("==============================")
+            print(error)
+            print("==============================")
+            print()
+
+        if self.reaction_picker:
+
+            self.reaction_picker.destroy()
+
+            self.reaction_picker = None
+
+        self._schedule_hide()
+
+    # =========================
+    # REACTION DISPLAY
+    # =========================
+
+    def _load_reactions(self):
+
+        try:
+
+            reactions = get_reactions(
+                self.message["id"]
+            )
+
+        except Exception as error:
+
+            print()
+            print("REACTION LOAD ERROR:")
+            print(error)
+            print()
+
+            return
+
+        if self.reaction_display:
+
+            self.reaction_display.destroy()
+
+            self.reaction_display = None
+
+        if not reactions:
+
+            return
+
+        self.reaction_display = ReactionDisplay(
+            self,
+            reactions
+        )
+
+        self.reaction_display.pack(
+            anchor=(
+                "e"
+                if self.is_me
+                else "w"
+            ),
+            padx=4,
+            pady=(2, 0)
+        )
+
+    # =========================
+    # REACTION HOVER
+    # =========================
+
+    def _reaction_enter(
+        self,
+        event=None
+    ):
+
+        self._cancel_hide()
+
+    def _reaction_leave(
+        self,
+        event=None
+    ):
+
+        self._schedule_hide()
+
 
 # =========================
 # MESSAGE GROUP
@@ -309,7 +663,8 @@ class MessageGroup(tk.Frame):
         self,
         parent,
         sender,
-        is_me
+        is_me,
+        username
     ):
 
         super().__init__(
@@ -319,14 +674,11 @@ class MessageGroup(tk.Frame):
 
         self.sender = sender
         self.is_me = is_me
+        self.username = username
 
         self.messages = []
 
         self._create_group()
-
-    # =========================
-    # GROUP HEADER
-    # =========================
 
     def _create_group(self):
 
@@ -348,10 +700,6 @@ class MessageGroup(tk.Frame):
             pady=(0, 2)
         )
 
-    # =========================
-    # ADD MESSAGE
-    # =========================
-
     def add_message(
         self,
         message
@@ -360,7 +708,8 @@ class MessageGroup(tk.Frame):
         row = MessageRow(
             self,
             message,
-            self.is_me
+            self.is_me,
+            self.username
         )
 
         row.pack(
@@ -377,19 +726,9 @@ class MessageGroup(tk.Frame):
 
         return row
 
-    # =========================
-    # MESSAGE COUNT
-    # =========================
-
     def message_count(self):
 
-        return len(
-            self.messages
-        )
-
-    # =========================
-    # LAST MESSAGE
-    # =========================
+        return len(self.messages)
 
     def last_message(self):
 

@@ -10,7 +10,7 @@ from config import (
 
 
 # =========================
-# SUPABASE CONNECTION
+# SUPABASE
 # =========================
 
 supabase = create_client(
@@ -28,18 +28,12 @@ def find_user(username):
     response = (
         supabase
         .table("users")
-        .select(
-            "username, password"
-        )
-        .eq(
-            "username",
-            username
-        )
+        .select("username, password")
+        .eq("username", username)
         .execute()
     )
 
     if not response.data:
-
         return None
 
     return response.data[0]
@@ -62,10 +56,7 @@ def get_messages():
     return response.data
 
 
-def send_message(
-    sender,
-    content
-):
+def send_message(sender, content):
 
     response = (
         supabase
@@ -85,10 +76,7 @@ def send_message(
 # IMAGE MESSAGES
 # =========================
 
-def send_image_message(
-    sender,
-    image_url
-):
+def send_image_message(sender, image_url):
 
     response = (
         supabase
@@ -105,57 +93,66 @@ def send_image_message(
     return response.data
 
 
-# =========================
-# IMAGE UPLOAD
-# =========================
-
-def upload_image(
-    file_path
-):
+def upload_image(file_path):
 
     extension = os.path.splitext(
         file_path
     )[1].lower()
 
     filename = (
-        f"{uuid.uuid4()}"
-        f"{extension}"
+        f"{uuid.uuid4()}{extension}"
     )
+
+    content_type = _get_content_type(
+        extension
+    )
+
+    print()
+    print("Uploading image...")
+    print("File:", file_path)
+    print("Storage path:", filename)
+    print("Content type:", content_type)
 
     with open(
         file_path,
         "rb"
     ) as file:
 
-        file_data = file.read()
+        response = (
+            supabase
+            .storage
+            .from_("chat-images")
+            .upload(
+                path=filename,
+                file=file,
+                file_options={
+                    "content-type": content_type,
+                    "upsert": "false"
+                }
+            )
+        )
 
-    response = (
+    print("IMAGE UPLOAD RESPONSE:")
+    print(response)
+
+    image_url = (
         supabase
         .storage
         .from_("chat-images")
-        .upload(
-            filename,
-            file_data,
-            {
-                "content-type":
-                    _get_content_type(
-                        extension
-                    )
-            }
+        .get_public_url(
+            filename
         )
     )
 
-    return (
-        f"{SUPABASE_URL}"
-        f"/storage/v1/object/public/"
-        f"chat-images/"
-        f"{filename}"
-    )
+    print("IMAGE URL:")
+    print(image_url)
+
+    print()
+
+    return image_url
 
 
-def _get_content_type(
-    extension
-):
+def _get_content_type(extension):
 
     types = {
         ".png": "image/png",
@@ -175,15 +172,13 @@ def _get_content_type(
 # REACTIONS
 # =========================
 
-def get_reactions(
-    message_id
-):
+def get_reactions(message_id):
 
     response = (
         supabase
         .table("reactions")
         .select(
-            "reaction, username"
+            "id, reaction, username"
         )
         .eq(
             "message_id",
@@ -199,7 +194,6 @@ def get_reactions(
         reaction = item["reaction"]
 
         if reaction not in reactions:
-
             reactions[reaction] = 0
 
         reactions[reaction] += 1
@@ -232,7 +226,10 @@ def add_reaction(
         .execute()
     )
 
+    # Remove reaction if it already exists
     if existing.data:
+
+        reaction_id = existing.data[0]["id"]
 
         (
             supabase
@@ -240,13 +237,14 @@ def add_reaction(
             .delete()
             .eq(
                 "id",
-                existing.data[0]["id"]
+                reaction_id
             )
             .execute()
         )
 
         return False
 
+    # Otherwise add it
     (
         supabase
         .table("reactions")
