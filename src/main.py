@@ -9,6 +9,7 @@ from config import (
 )
 
 from login import create_login_screen
+from chat import create_chat_screen
 
 
 # =========================
@@ -24,6 +25,13 @@ def login_success(username):
     print("==============================")
     print()
 
+    login_frame.destroy()
+
+    create_chat_screen(
+        window,
+        username
+    )
+
 
 # =========================
 # WINDOW
@@ -31,7 +39,9 @@ def login_success(username):
 
 window = tk.Tk()
 
-window.title(APP_TITLE)
+window.title(
+    APP_TITLE
+)
 
 window.geometry(
     f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}"
@@ -44,7 +54,7 @@ window.minsize(
 
 
 # =========================
-# LOGIN SCREEN
+# LOGIN
 # =========================
 
 login_frame = create_login_screen(

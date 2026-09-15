@@ -7,15 +7,28 @@ from dotenv import load_dotenv
 # ENVIRONMENT
 # =========================
 
-load_dotenv()
+# Load the .env file located inside src/
+env_path = os.path.join(
+    os.path.dirname(__file__),
+    ".env"
+)
+
+load_dotenv(env_path)
+
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 
-if not SUPABASE_URL or not SUPABASE_KEY:
+if not SUPABASE_URL:
     raise ValueError(
-        "SUPABASE_URL or SUPABASE_KEY is missing from .env"
+        "SUPABASE_URL is missing from src/.env"
+    )
+
+
+if not SUPABASE_KEY:
+    raise ValueError(
+        "SUPABASE_KEY is missing from src/.env"
     )
 
 
@@ -23,7 +36,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 # APP
 # =========================
 
-APP_TITLE = "Elvis & Nysa"
+APP_TITLE = "chat..."
 
 WINDOW_WIDTH = 500
 WINDOW_HEIGHT = 650
@@ -46,4 +59,5 @@ MUTED_TEXT = "#8A7B80"
 
 BUTTON = "#FF8FAB"
 BUTTON_HOVER = "#FF7599"
+
 ERROR = "#D65A70"
