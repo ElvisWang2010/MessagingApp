@@ -28,8 +28,13 @@ def find_user(username):
     response = (
         supabase
         .table("users")
-        .select("username, password")
-        .eq("username", username)
+        .select(
+            "username, password"
+        )
+        .eq(
+            "username",
+            username
+        )
         .execute()
     )
 
@@ -56,7 +61,10 @@ def get_messages():
     return response.data
 
 
-def send_message(sender, content):
+def send_message(
+    sender,
+    content
+):
 
     response = (
         supabase
@@ -76,7 +84,10 @@ def send_message(sender, content):
 # IMAGE MESSAGES
 # =========================
 
-def send_image_message(sender, image_url):
+def send_image_message(
+    sender,
+    image_url
+):
 
     response = (
         supabase
@@ -93,6 +104,10 @@ def send_image_message(sender, image_url):
     return response.data
 
 
+# =========================
+# IMAGE UPLOAD
+# =========================
+
 def upload_image(file_path):
 
     extension = os.path.splitext(
@@ -100,17 +115,23 @@ def upload_image(file_path):
     )[1].lower()
 
     filename = (
-        f"{uuid.uuid4()}{extension}"
+        f"{uuid.uuid4()}"
+        f"{extension}"
     )
 
-    content_type = _get_content_type(
-        extension
+    content_type = (
+        _get_content_type(
+            extension
+        )
     )
 
     print()
-    print("Uploading image...")
+    print("==============================")
+    print("IMAGE UPLOAD")
+    print("==============================")
     print("File:", file_path)
-    print("Storage path:", filename)
+    print("Bucket:", "chat-images")
+    print("Filename:", filename)
     print("Content type:", content_type)
 
     with open(
@@ -132,7 +153,7 @@ def upload_image(file_path):
             )
         )
 
-    print("IMAGE UPLOAD RESPONSE:")
+    print("Upload response:")
     print(response)
 
     image_url = (
@@ -144,15 +165,17 @@ def upload_image(file_path):
         )
     )
 
-    print("IMAGE URL:")
+    print("Public URL:")
     print(image_url)
-
+    print("==============================")
     print()
 
     return image_url
 
 
-def _get_content_type(extension):
+def _get_content_type(
+    extension
+):
 
     types = {
         ".png": "image/png",
@@ -172,13 +195,15 @@ def _get_content_type(extension):
 # REACTIONS
 # =========================
 
-def get_reactions(message_id):
+def get_reactions(
+    message_id
+):
 
     response = (
         supabase
         .table("reactions")
         .select(
-            "id, reaction, username"
+            "reaction, username"
         )
         .eq(
             "message_id",
@@ -226,10 +251,12 @@ def add_reaction(
         .execute()
     )
 
-    # Remove reaction if it already exists
+    # Toggle OFF
     if existing.data:
 
-        reaction_id = existing.data[0]["id"]
+        reaction_id = (
+            existing.data[0]["id"]
+        )
 
         (
             supabase
@@ -244,7 +271,7 @@ def add_reaction(
 
         return False
 
-    # Otherwise add it
+    # Toggle ON
     (
         supabase
         .table("reactions")

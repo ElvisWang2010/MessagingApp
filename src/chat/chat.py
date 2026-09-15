@@ -339,7 +339,7 @@ class ChatView(tk.Frame):
 
         self.image_button = tk.Button(
             self.input_container,
-            text="＋",
+            text="+",
             font=(
                 "Arial",
                 18,
@@ -357,7 +357,10 @@ class ChatView(tk.Frame):
 
         self.image_button.pack(
             side="left",
-            padx=(10, 2),
+            padx=(
+                10,
+                2
+            ),
             pady=8
         )
 
@@ -381,7 +384,10 @@ class ChatView(tk.Frame):
             side="left",
             fill="x",
             expand=True,
-            padx=(4, 6),
+            padx=(
+                4,
+                6
+            ),
             pady=10,
             ipady=8
         )
@@ -410,7 +416,10 @@ class ChatView(tk.Frame):
 
         self.send_button.pack(
             side="right",
-            padx=(4, 12),
+            padx=(
+                4,
+                12
+            ),
             pady=10,
             ipadx=8
         )
@@ -423,7 +432,7 @@ class ChatView(tk.Frame):
         self.message_entry.focus()
 
     # =========================
-    # LOAD MESSAGES
+    # LOAD
     # =========================
 
     def _load_existing_messages(self):
@@ -471,17 +480,22 @@ class ChatView(tk.Frame):
 
         if sender != self.last_sender:
 
-            self.current_group = MessageGroup(
-                self.messages_frame,
-                sender,
-                is_me,
-                self.username
+            self.current_group = (
+                MessageGroup(
+                    self.messages_frame,
+                    sender,
+                    is_me,
+                    self.username
+                )
             )
 
             self.current_group.pack(
                 fill="x",
                 padx=MESSAGE_PADDING_X,
-                pady=(8, 0)
+                pady=(
+                    8,
+                    0
+                )
             )
 
             self.last_sender = sender
@@ -528,11 +542,8 @@ class ChatView(tk.Frame):
         except Exception as error:
 
             print()
-            print("==============================")
-            print("MESSAGE SEND ERROR")
-            print("==============================")
+            print("MESSAGE SEND ERROR:")
             print(error)
-            print("==============================")
             print()
 
         finally:
@@ -579,11 +590,8 @@ class ChatView(tk.Frame):
         except Exception as error:
 
             print()
-            print("==============================")
-            print("IMAGE MESSAGE ERROR")
-            print("==============================")
+            print("IMAGE MESSAGE ERROR:")
             print(error)
-            print("==============================")
             print()
 
         finally:
@@ -660,7 +668,7 @@ class ChatView(tk.Frame):
 
 
 # =========================
-# CREATE SCREEN
+# CREATE CHAT SCREEN
 # =========================
 
 def create_chat_screen(

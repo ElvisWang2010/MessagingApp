@@ -26,7 +26,6 @@ from config import (
 # SETTINGS
 # =========================
 
-GROUP_SPACING = 14
 MESSAGE_SPACING = 3
 
 SENDER_FONT = (
@@ -68,7 +67,6 @@ class MessageRow(tk.Frame):
         self.username = username
 
         self.hide_job = None
-        self.reaction_hide_job = None
 
         self.bubble = None
         self.image = None
@@ -106,7 +104,9 @@ class MessageRow(tk.Frame):
 
         if (
             message_type == "image"
-            and self.message.get("image_url")
+            and self.message.get(
+                "image_url"
+            )
         ):
 
             self.image = ChatImage(
@@ -167,40 +167,66 @@ class MessageRow(tk.Frame):
 
         self.timestamp.bind(
             "<Enter>",
-            self._timestamp_enter
+            self._cancel_hide
         )
 
         self.timestamp.bind(
             "<Leave>",
-            self._timestamp_leave
+            lambda event:
+                self._schedule_hide()
         )
 
         # -------------------------
         # REACTION BUTTON
         # -------------------------
 
-        self.reaction_button = ReactionButton(
-            self,
-            self._show_reaction_picker
+        self.reaction_button = (
+            ReactionButton(
+                self,
+                self._show_reaction_picker
+            )
         )
 
         self.reaction_button.place_forget()
 
         self.reaction_button.bind(
             "<Enter>",
-            self._reaction_enter
+            self._cancel_hide
         )
 
         self.reaction_button.bind(
             "<Leave>",
-            self._reaction_leave
+            lambda event:
+                self._schedule_hide()
         )
 
         # -------------------------
-        # REACTIONS
+        # EXISTING REACTIONS
         # -------------------------
 
         self._load_reactions()
+
+    # =========================
+    # MESSAGE DIMENSIONS
+    # =========================
+
+    def _message_dimensions(self):
+
+        if self.bubble:
+
+            return (
+                self.bubble.winfo_reqwidth(),
+                self.bubble.winfo_reqheight()
+            )
+
+        if self.image:
+
+            return (
+                self.image.winfo_reqwidth(),
+                self.image.winfo_reqheight()
+            )
+
+        return 0, 0
 
     # =========================
     # TIMESTAMP
@@ -267,29 +293,13 @@ class MessageRow(tk.Frame):
 
         self.update_idletasks()
 
+        message_width, message_height = (
+            self._message_dimensions()
+        )
+
         timestamp_width = (
             self.timestamp.winfo_reqwidth()
         )
-
-        if self.bubble:
-
-            message_width = (
-                self.bubble.winfo_reqwidth()
-            )
-
-            message_height = (
-                self.bubble.winfo_reqheight()
-            )
-
-        else:
-
-            message_width = (
-                self.image.winfo_reqwidth()
-            )
-
-            message_height = (
-                self.image.winfo_reqheight()
-            )
 
         row_width = self.winfo_width()
 
@@ -333,7 +343,7 @@ class MessageRow(tk.Frame):
         self.timestamp.lift()
 
     # =========================
-    # CONTROLS
+    # SHOW CONTROLS
     # =========================
 
     def _show_controls(self):
@@ -344,25 +354,9 @@ class MessageRow(tk.Frame):
 
         self.update_idletasks()
 
-        if self.bubble:
-
-            message_width = (
-                self.bubble.winfo_reqwidth()
-            )
-
-            message_height = (
-                self.bubble.winfo_reqheight()
-            )
-
-        else:
-
-            message_width = (
-                self.image.winfo_reqwidth()
-            )
-
-            message_height = (
-                self.image.winfo_reqheight()
-            )
+        message_width, message_height = (
+            self._message_dimensions()
+        )
 
         row_width = self.winfo_width()
 
@@ -379,8 +373,11 @@ class MessageRow(tk.Frame):
             self.reaction_button.winfo_reqwidth()
         )
 
-        center_y = (
-            message_height // 2
+        # Put the reaction button ABOVE
+        # the message instead of beside it.
+        y = -(
+            self.reaction_button.winfo_reqheight()
+            + 2
         )
 
         if self.is_me:
@@ -388,27 +385,22 @@ class MessageRow(tk.Frame):
             x = (
                 row_width
                 - message_width
-                - button_width
-                - 6
             )
 
         else:
 
-            x = (
-                message_width
-                + 6
-            )
+            x = 0
 
         self.reaction_button.place(
             x=x,
-            y=center_y,
-            anchor="w"
+            y=y,
+            anchor="sw"
         )
 
         self.reaction_button.lift()
 
     # =========================
-    # HIDE CONTROLS
+    # HIDE
     # =========================
 
     def _schedule_hide(self):
@@ -424,15 +416,18 @@ class MessageRow(tk.Frame):
 
         self.timestamp.place_forget()
 
+        self.reaction_button.place_forget()
+
         if self.reaction_picker:
 
             self.reaction_picker.place_forget()
 
-        self.reaction_button.place_forget()
-
         self.hide_job = None
 
-    def _cancel_hide(self):
+    def _cancel_hide(
+        self,
+        event=None
+    ):
 
         if self.hide_job is None:
             return
@@ -448,24 +443,6 @@ class MessageRow(tk.Frame):
             pass
 
         self.hide_job = None
-
-    # =========================
-    # TIMESTAMP HOVER
-    # =========================
-
-    def _timestamp_enter(
-        self,
-        event=None
-    ):
-
-        self._cancel_hide()
-
-    def _timestamp_leave(
-        self,
-        event=None
-    ):
-
-        self._schedule_hide()
 
     # =========================
     # REACTION PICKER
@@ -490,35 +467,20 @@ class MessageRow(tk.Frame):
             self.reaction_picker.winfo_reqwidth()
         )
 
-        picker_height = (
-            self.reaction_picker.winfo_reqheight()
+        message_width, message_height = (
+            self._message_dimensions()
         )
 
         row_width = self.winfo_width()
 
-        if self.bubble:
-
-            message_width = (
-                self.bubble.winfo_reqwidth()
-            )
-
-            message_height = (
-                self.bubble.winfo_reqheight()
-            )
-
-        else:
-
-            message_width = (
-                self.image.winfo_reqwidth()
-            )
-
-            message_height = (
-                self.image.winfo_reqheight()
-            )
+        picker_height = (
+            self.reaction_picker.winfo_reqheight()
+        )
 
         if self.is_me:
 
-            x = (
+            x = max(
+                0,
                 row_width
                 - message_width
                 - picker_width
@@ -526,29 +488,31 @@ class MessageRow(tk.Frame):
 
         else:
 
-            x = message_width
+            x = 0
 
         y = (
-            message_height
-            + 4
+            -picker_height
+            - self.reaction_button.winfo_reqheight()
+            - 5
         )
 
         self.reaction_picker.place(
             x=x,
             y=y,
-            anchor="nw"
+            anchor="sw"
         )
 
         self.reaction_picker.lift()
 
         self.reaction_picker.bind(
             "<Enter>",
-            self._reaction_enter
+            self._cancel_hide
         )
 
         self.reaction_picker.bind(
             "<Leave>",
-            self._reaction_leave
+            lambda event:
+                self._schedule_hide()
         )
 
     # =========================
@@ -578,7 +542,6 @@ class MessageRow(tk.Frame):
             print("==============================")
             print(error)
             print("==============================")
-            print()
 
         if self.reaction_picker:
 
@@ -586,10 +549,10 @@ class MessageRow(tk.Frame):
 
             self.reaction_picker = None
 
-        self._schedule_hide()
+        self._show_controls()
 
     # =========================
-    # REACTION DISPLAY
+    # LOAD REACTIONS
     # =========================
 
     def _load_reactions(self):
@@ -619,9 +582,14 @@ class MessageRow(tk.Frame):
 
             return
 
-        self.reaction_display = ReactionDisplay(
-            self,
-            reactions
+        self.reaction_display = (
+            ReactionDisplay(
+                self,
+                reactions,
+                on_reaction_click=(
+                    self._reaction_selected
+                )
+            )
         )
 
         self.reaction_display.pack(
@@ -633,24 +601,6 @@ class MessageRow(tk.Frame):
             padx=4,
             pady=(2, 0)
         )
-
-    # =========================
-    # REACTION HOVER
-    # =========================
-
-    def _reaction_enter(
-        self,
-        event=None
-    ):
-
-        self._cancel_hide()
-
-    def _reaction_leave(
-        self,
-        event=None
-    ):
-
-        self._schedule_hide()
 
 
 # =========================
@@ -728,7 +678,9 @@ class MessageGroup(tk.Frame):
 
     def message_count(self):
 
-        return len(self.messages)
+        return len(
+            self.messages
+        )
 
     def last_message(self):
 

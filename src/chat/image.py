@@ -18,7 +18,9 @@ from config import (
     TEXT
 )
 
-from database import upload_image
+from database import (
+    upload_image
+)
 
 
 # =========================
@@ -58,7 +60,7 @@ IMAGE_FORMATS = [
 
 
 # =========================
-# FILE SELECTION
+# SELECT IMAGE
 # =========================
 
 def select_image():
@@ -73,6 +75,10 @@ def select_image():
 
     return path
 
+
+# =========================
+# UPLOAD IMAGE
+# =========================
 
 def upload_selected_image():
 
@@ -99,7 +105,7 @@ def upload_selected_image():
 
         messagebox.showerror(
             "Image Upload Failed",
-            f"Could not upload the image.\n\n{error}"
+            str(error)
         )
 
         return None
@@ -135,9 +141,9 @@ class ChatImage(tk.Frame):
         self.photo = None
         self.label = None
 
-        self._create_image()
+        self._load_image()
 
-    def _create_image(self):
+    def _load_image(self):
 
         if self.image_path:
 
@@ -183,7 +189,9 @@ class ChatImage(tk.Frame):
                 timeout=10
             ) as response:
 
-                image_data = response.read()
+                image_data = (
+                    response.read()
+                )
 
             self.image = Image.open(
                 BytesIO(image_data)

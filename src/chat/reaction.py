@@ -3,19 +3,34 @@ import tkinter as tk
 from config import (
     CHAT_BACKGROUND,
     TEXT,
-    BUTTON
+    BUTTON,
+    BUTTON_HOVER
 )
 
+
+# =========================
+# REACTIONS
+# =========================
 
 REACTIONS = [
     "❤️",
     "😂",
+    "👍",
     "😭",
-    "😮",
-    "😡",
-    "👍"
+    "🥰",
+    "😮"
 ]
 
+
+EMOJI_FONT = (
+    "Segoe UI Emoji",
+    13
+)
+
+
+# =========================
+# REACTION PICKER
+# =========================
 
 class ReactionPicker(tk.Frame):
 
@@ -43,39 +58,49 @@ class ReactionPicker(tk.Frame):
             button = tk.Button(
                 self,
                 text=reaction,
-                font=(
-                    "Arial",
-                    13
-                ),
+                font=EMOJI_FONT,
                 bg="white",
                 fg=TEXT,
-                activebackground="#FFF0F4",
+                activebackground="#FFE5EC",
+                activeforeground=TEXT,
                 relief="flat",
                 bd=0,
                 cursor="hand2",
-                command=lambda r=reaction:
-                    self._select_reaction(r)
+                padx=3,
+                pady=2,
+                command=lambda emoji=reaction:
+                    self._select_reaction(
+                        emoji
+                    )
             )
 
             button.pack(
-                side="left",
-                padx=3,
-                pady=3
+                side="left"
             )
 
-    def _select_reaction(self, reaction):
+    def _select_reaction(
+        self,
+        reaction
+    ):
 
-        self.on_reaction(
-            reaction
-        )
+        if self.on_reaction:
 
+            self.on_reaction(
+                reaction
+            )
+
+
+# =========================
+# REACTION DISPLAY
+# =========================
 
 class ReactionDisplay(tk.Frame):
 
     def __init__(
         self,
         parent,
-        reactions
+        reactions,
+        on_reaction_click=None
     ):
 
         super().__init__(
@@ -84,39 +109,64 @@ class ReactionDisplay(tk.Frame):
         )
 
         self.reactions = reactions
+        self.on_reaction_click = (
+            on_reaction_click
+        )
 
         self._create_display()
 
     def _create_display(self):
 
-        for reaction, count in self.reactions.items():
+        for reaction, count in (
+            self.reactions.items()
+        ):
 
             if count <= 0:
                 continue
 
-            text = (
-                f"{reaction} {count}"
-            )
-
-            label = tk.Label(
+            button = tk.Button(
                 self,
-                text=text,
+                text=(
+                    f"{reaction} {count}"
+                ),
                 font=(
-                    "Arial",
+                    "Segoe UI Emoji",
                     9
                 ),
-                bg="#FFF0F4",
+                bg="#FFE0E8",
                 fg=TEXT,
-                padx=7,
-                pady=2,
-                relief="flat"
+                activebackground="#FFD0DC",
+                relief="flat",
+                bd=0,
+                cursor="hand2",
+                padx=6,
+                pady=1,
+                command=lambda emoji=reaction:
+                    self._clicked(
+                        emoji
+                    )
             )
 
-            label.pack(
+            button.pack(
                 side="left",
                 padx=2
             )
 
+    def _clicked(
+        self,
+        reaction
+    ):
+
+        if self.on_reaction_click:
+
+            self.on_reaction_click(
+                reaction
+            )
+
+
+# =========================
+# REACTION BUTTON
+# =========================
 
 class ReactionButton(tk.Button):
 
@@ -128,18 +178,19 @@ class ReactionButton(tk.Button):
 
         super().__init__(
             parent,
-            text="＋",
+            text="♡",
             font=(
                 "Arial",
-                11,
-                "bold"
+                11
             ),
-            bg="white",
+            bg=CHAT_BACKGROUND,
             fg=BUTTON,
-            activebackground="#FFF0F4",
-            activeforeground=BUTTON,
+            activebackground="#FFE5EC",
+            activeforeground=BUTTON_HOVER,
             relief="flat",
             bd=0,
             cursor="hand2",
+            padx=4,
+            pady=2,
             command=command
         )
