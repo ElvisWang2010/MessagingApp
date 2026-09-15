@@ -136,6 +136,10 @@ class ChatView(tk.Frame):
             expand=True
         )
 
+        # -------------------------
+        # CANVAS
+        # -------------------------
+
         self.chat_canvas = tk.Canvas(
             self.chat_container,
             bg=CHAT_BACKGROUND,
@@ -148,6 +152,10 @@ class ChatView(tk.Frame):
             fill="both",
             expand=True
         )
+
+        # -------------------------
+        # SCROLLBAR
+        # -------------------------
 
         self.scrollbar = tk.Scrollbar(
             self.chat_container,
@@ -164,6 +172,10 @@ class ChatView(tk.Frame):
             yscrollcommand=self.scrollbar.set
         )
 
+        # -------------------------
+        # MESSAGE FRAME
+        # -------------------------
+
         self.messages_frame = tk.Frame(
             self.chat_canvas,
             bg=CHAT_BACKGROUND
@@ -178,6 +190,10 @@ class ChatView(tk.Frame):
             )
         )
 
+        # -------------------------
+        # RESIZE EVENTS
+        # -------------------------
+
         self.messages_frame.bind(
             "<Configure>",
             self._update_scroll_region
@@ -188,6 +204,10 @@ class ChatView(tk.Frame):
             self._resize_messages_frame
         )
 
+        # -------------------------
+        # SCROLLING
+        # -------------------------
+
         self._setup_scrolling()
 
     # =========================
@@ -196,53 +216,62 @@ class ChatView(tk.Frame):
 
     def _setup_scrolling(self):
 
-        widgets = [
-            self.chat_container,
-            self.chat_canvas,
-            self.messages_frame
-        ]
+        # When the mouse enters the chat area,
+        # temporarily capture mouse wheel events.
+        self.chat_container.bind(
+            "<Enter>",
+            self._enter_chat_area,
+            add="+"
+        )
 
-        for widget in widgets:
+        # When the mouse completely leaves the
+        # chat area, release mouse wheel events.
+        self.chat_container.bind(
+            "<Leave>",
+            self._leave_chat_area,
+            add="+"
+        )
 
-            widget.bind(
-                "<MouseWheel>",
-                self._mouse_wheel,
-                add="+"
-            )
-
-            widget.bind(
-                "<Button-4>",
-                self._scroll_up,
-                add="+"
-            )
-
-            widget.bind(
-                "<Button-5>",
-                self._scroll_down,
-                add="+"
-            )
-
-    def _bind_message_scrolling(
+    def _enter_chat_area(
         self,
-        widget
+        event=None
     ):
 
-        widget.bind(
+        # Windows / macOS
+        self.chat_container.bind_all(
             "<MouseWheel>",
             self._mouse_wheel,
             add="+"
         )
 
-        widget.bind(
+        # Linux
+        self.chat_container.bind_all(
             "<Button-4>",
             self._scroll_up,
             add="+"
         )
 
-        widget.bind(
+        self.chat_container.bind_all(
             "<Button-5>",
             self._scroll_down,
             add="+"
+        )
+
+    def _leave_chat_area(
+        self,
+        event=None
+    ):
+
+        self.chat_container.unbind_all(
+            "<MouseWheel>"
+        )
+
+        self.chat_container.unbind_all(
+            "<Button-4>"
+        )
+
+        self.chat_container.unbind_all(
+            "<Button-5>"
         )
 
     def _mouse_wheel(
@@ -252,20 +281,17 @@ class ChatView(tk.Frame):
 
         if event.delta > 0:
 
-            amount = -SCROLL_SPEED
+            self.chat_canvas.yview_scroll(
+                -SCROLL_SPEED,
+                "units"
+            )
 
         elif event.delta < 0:
 
-            amount = SCROLL_SPEED
-
-        else:
-
-            return
-
-        self.chat_canvas.yview_scroll(
-            amount,
-            "units"
-        )
+            self.chat_canvas.yview_scroll(
+                SCROLL_SPEED,
+                "units"
+            )
 
     def _scroll_up(
         self,
@@ -313,7 +339,7 @@ class ChatView(tk.Frame):
         )
 
     # =========================
-    # INPUT
+    # INPUT AREA
     # =========================
 
     def _create_input_area(self):
@@ -331,6 +357,10 @@ class ChatView(tk.Frame):
         self.input_container.pack_propagate(
             False
         )
+
+        # -------------------------
+        # MESSAGE ENTRY
+        # -------------------------
 
         self.message_entry = tk.Entry(
             self.input_container,
@@ -355,6 +385,10 @@ class ChatView(tk.Frame):
             pady=10,
             ipady=8
         )
+
+        # -------------------------
+        # SEND BUTTON
+        # -------------------------
 
         self.send_button = tk.Button(
             self.input_container,
@@ -384,6 +418,7 @@ class ChatView(tk.Frame):
             ipadx=8
         )
 
+        # Press Enter to send.
         self.message_entry.bind(
             "<Return>",
             self._enter_pressed
@@ -392,7 +427,7 @@ class ChatView(tk.Frame):
         self.message_entry.focus()
 
     # =========================
-    # LOAD MESSAGES
+    # LOAD EXISTING MESSAGES
     # =========================
 
     def _load_existing_messages(self):
@@ -438,6 +473,10 @@ class ChatView(tk.Frame):
             sender == self.username
         )
 
+        # -------------------------
+        # NEW SENDER
+        # -------------------------
+
         if sender != self.last_sender:
 
             self.current_group = MessageGroup(
@@ -457,30 +496,24 @@ class ChatView(tk.Frame):
 
             self.last_sender = sender
 
-        row = self.current_group.add_message(
+        # -------------------------
+        # ADD MESSAGE
+        # -------------------------
+
+        self.current_group.add_message(
             message
         )
 
-        # Make sure scrolling works even when
-        # the mouse is directly over a message.
-        self._bind_message_scrolling(
-            row
-        )
-
-        self._bind_message_scrolling(
-            row.bubble
-        )
-
-        self._bind_message_scrolling(
-            row.bubble.canvas
-        )
+        # -------------------------
+        # SCROLL
+        # -------------------------
 
         if scroll:
 
             self._scroll_to_bottom()
 
     # =========================
-    # SEND
+    # SEND MESSAGE
     # =========================
 
     def _send_current_message(self):
@@ -492,6 +525,7 @@ class ChatView(tk.Frame):
         )
 
         if not content:
+
             return
 
         self.send_button.config(
@@ -542,6 +576,11 @@ class ChatView(tk.Frame):
         self,
         message
     ):
+
+        # Realtime runs in another thread.
+        #
+        # Tkinter GUI changes must happen
+        # on the main thread.
 
         self.after(
             0,
