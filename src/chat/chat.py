@@ -14,7 +14,7 @@ from config import (
 
 from database import send_message, send_image_message
 
-from message import MessageRow
+from .message import MessageRow
 from image import upload_selected_image
 
 from realtime_listener import start_realtime_listener
