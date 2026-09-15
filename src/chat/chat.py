@@ -477,7 +477,8 @@ class ChatView(tk.Frame):
             self.current_group = MessageGroup(
                 self.messages_frame,
                 sender,
-                is_me
+                is_me,
+                self.username
             )
 
             self.current_group.pack(
