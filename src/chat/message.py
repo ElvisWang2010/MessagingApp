@@ -29,7 +29,7 @@ TIMESTAMP_FONT = (
 
 TIMESTAMP_HIDE_DELAY = 100
 
-TIMESTAMP_GAP = 6
+TIMESTAMP_GAP = 7
 
 
 # =========================
@@ -58,7 +58,7 @@ class MessageRow(tk.Frame):
         self._create_row()
 
     # =========================
-    # CREATE
+    # CREATE ROW
     # =========================
 
     def _create_row(self):
@@ -72,6 +72,23 @@ class MessageRow(tk.Frame):
             anchor="e" if self.is_me else "w"
         )
 
+        # Create the bubble first so we know
+        # its size before positioning the timestamp.
+        self.bubble = MessageBubble(
+            self.content_frame,
+            self.message.get(
+                "content",
+                ""
+            ),
+            self.is_me,
+            on_enter=self._show_timestamp,
+            on_leave=self._schedule_hide
+        )
+
+        self.bubble.pack(
+            side="left"
+        )
+
         self.timestamp = tk.Label(
             self.content_frame,
             text=self._format_timestamp(),
@@ -80,22 +97,17 @@ class MessageRow(tk.Frame):
             fg=MUTED_TEXT
         )
 
+        # Timestamp starts hidden.
         self.timestamp.place_forget()
 
-        self.bubble = MessageBubble(
-            self.content_frame,
-            self.message.get("content", ""),
-            self.is_me,
-            on_enter=self._show_timestamp,
-            on_leave=self._schedule_hide
-        )
+        self._bind_timestamp()
 
-        self.bubble.pack()
-
-        self._bind_timestamp_hover()
+        # Make sure Tkinter has calculated
+        # the actual bubble dimensions.
+        self.update_idletasks()
 
     # =========================
-    # TIMESTAMP
+    # TIMESTAMP FORMAT
     # =========================
 
     def _format_timestamp(self):
@@ -110,20 +122,30 @@ class MessageRow(tk.Frame):
 
         try:
 
+            # Example:
+            # 2026-09-15T00:47:33.277267+00:00
+
             time_part = timestamp.split("T")[1]
 
+            # Remove milliseconds/timezone.
             time_part = time_part.split(".")[0]
 
-            hour = int(
-                time_part.split(":")[0]
-            )
+            # Remove timezone if there was
+            # no millisecond separator.
+            time_part = time_part.split("+")[0]
 
-            minute = time_part.split(":")[1]
+            parts = time_part.split(":")
 
-            suffix = "AM"
+            hour = int(parts[0])
+            minute = parts[1]
 
             if hour >= 12:
+
                 suffix = "PM"
+
+            else:
+
+                suffix = "AM"
 
             if hour > 12:
                 hour -= 12
@@ -140,9 +162,22 @@ class MessageRow(tk.Frame):
 
             return ""
 
-    def _position_timestamp(self):
+    # =========================
+    # SHOW TIMESTAMP
+    # =========================
 
-        self.timestamp.update_idletasks()
+    def _show_timestamp(self):
+
+        # Cancel a pending hide.
+        if self.hide_job is not None:
+
+            self.after_cancel(
+                self.hide_job
+            )
+
+            self.hide_job = None
+
+        self.update_idletasks()
 
         timestamp_width = (
             self.timestamp.winfo_reqwidth()
@@ -152,40 +187,47 @@ class MessageRow(tk.Frame):
             self.bubble.winfo_reqwidth()
         )
 
+        bubble_height = (
+            self.bubble.winfo_reqheight()
+        )
+
+        # -------------------------
+        # MY MESSAGE
+        # -------------------------
+
         if self.is_me:
 
+            # Elvis:
+            #
+            #     [ bubble ]  4:32 PM
+            #
             self.timestamp.place(
-                relx=1,
-                x=TIMESTAMP_GAP,
-                y=self.bubble.winfo_reqheight() / 2,
+                x=bubble_width + TIMESTAMP_GAP,
+                y=bubble_height // 2,
                 anchor="w"
             )
+
+        # -------------------------
+        # OTHER MESSAGE
+        # -------------------------
 
         else:
 
+            # Nysa:
+            #
+            # 4:32 PM  [ bubble ]
+            #
             self.timestamp.place(
                 x=-timestamp_width - TIMESTAMP_GAP,
-                y=self.bubble.winfo_reqheight() / 2,
+                y=bubble_height // 2,
                 anchor="w"
             )
 
+        self.timestamp.lift()
+
     # =========================
-    # SHOW / HIDE
+    # HIDE TIMESTAMP
     # =========================
-
-    def _show_timestamp(self):
-
-        if self.hide_job is not None:
-
-            self.after_cancel(
-                self.hide_job
-            )
-
-            self.hide_job = None
-
-        self._position_timestamp()
-
-        self._bind_timestamp_hover()
 
     def _schedule_hide(self):
 
@@ -210,7 +252,7 @@ class MessageRow(tk.Frame):
     # TIMESTAMP HOVER
     # =========================
 
-    def _bind_timestamp_hover(self):
+    def _bind_timestamp(self):
 
         self.timestamp.bind(
             "<Enter>",
@@ -306,10 +348,15 @@ class MessageGroup(tk.Frame):
 
         row.pack(
             fill="x",
-            pady=(0, MESSAGE_SPACING)
+            pady=(
+                0,
+                MESSAGE_SPACING
+            )
         )
 
-        self.messages.append(row)
+        self.messages.append(
+            row
+        )
 
         return row
 
@@ -337,11 +384,18 @@ class MessageGroup(tk.Frame):
 
     def message_count(self):
 
-        return len(self.messages)
+        return len(
+            self.messages
+        )
+
+    # =========================
+    # LAST MESSAGE
+    # =========================
 
     def last_message(self):
 
         if not self.messages:
+
             return None
 
         return self.messages[-1]
