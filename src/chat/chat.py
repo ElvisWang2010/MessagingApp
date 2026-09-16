@@ -1,8 +1,11 @@
 import tkinter as tk
 
+from tkinter import messagebox
+
 from database import (
     get_messages,
-    send_message
+    send_message,
+    send_image_message
 )
 
 from realtime_listener import (
@@ -21,10 +24,11 @@ from config import (
 )
 
 from .message import MessageGroup
+from .image import upload_selected_image
 
 
 # =========================
-# CHAT SETTINGS
+# SETTINGS
 # =========================
 
 HEADER_HEIGHT = 60
@@ -136,10 +140,6 @@ class ChatView(tk.Frame):
             expand=True
         )
 
-        # -------------------------
-        # CANVAS
-        # -------------------------
-
         self.chat_canvas = tk.Canvas(
             self.chat_container,
             bg=CHAT_BACKGROUND,
@@ -152,10 +152,6 @@ class ChatView(tk.Frame):
             fill="both",
             expand=True
         )
-
-        # -------------------------
-        # SCROLLBAR
-        # -------------------------
 
         self.scrollbar = tk.Scrollbar(
             self.chat_container,
@@ -172,10 +168,6 @@ class ChatView(tk.Frame):
             yscrollcommand=self.scrollbar.set
         )
 
-        # -------------------------
-        # MESSAGE FRAME
-        # -------------------------
-
         self.messages_frame = tk.Frame(
             self.chat_canvas,
             bg=CHAT_BACKGROUND
@@ -190,10 +182,6 @@ class ChatView(tk.Frame):
             )
         )
 
-        # -------------------------
-        # RESIZE EVENTS
-        # -------------------------
-
         self.messages_frame.bind(
             "<Configure>",
             self._update_scroll_region
@@ -203,10 +191,6 @@ class ChatView(tk.Frame):
             "<Configure>",
             self._resize_messages_frame
         )
-
-        # -------------------------
-        # SCROLLING
-        # -------------------------
 
         self._setup_scrolling()
 
@@ -239,18 +223,6 @@ class ChatView(tk.Frame):
             add="+"
         )
 
-        self.chat_container.bind_all(
-            "<Button-4>",
-            self._scroll_up,
-            add="+"
-        )
-
-        self.chat_container.bind_all(
-            "<Button-5>",
-            self._scroll_down,
-            add="+"
-        )
-
     def _leave_chat_area(
         self,
         event=None
@@ -258,14 +230,6 @@ class ChatView(tk.Frame):
 
         self.chat_container.unbind_all(
             "<MouseWheel>"
-        )
-
-        self.chat_container.unbind_all(
-            "<Button-4>"
-        )
-
-        self.chat_container.unbind_all(
-            "<Button-5>"
         )
 
     def _mouse_wheel(
@@ -286,30 +250,6 @@ class ChatView(tk.Frame):
                 SCROLL_SPEED,
                 "units"
             )
-
-    def _scroll_up(
-        self,
-        event=None
-    ):
-
-        self.chat_canvas.yview_scroll(
-            -SCROLL_SPEED,
-            "units"
-        )
-
-    def _scroll_down(
-        self,
-        event=None
-    ):
-
-        self.chat_canvas.yview_scroll(
-            SCROLL_SPEED,
-            "units"
-        )
-
-    # =========================
-    # SCROLL REGION
-    # =========================
 
     def _update_scroll_region(
         self,
@@ -333,7 +273,7 @@ class ChatView(tk.Frame):
         )
 
     # =========================
-    # INPUT AREA
+    # INPUT
     # =========================
 
     def _create_input_area(self):
@@ -353,7 +293,37 @@ class ChatView(tk.Frame):
         )
 
         # -------------------------
-        # MESSAGE ENTRY
+        # IMAGE BUTTON
+        # -------------------------
+
+        self.image_button = tk.Button(
+            self.input_container,
+            text="＋",
+            font=(
+                "Arial",
+                18
+            ),
+            bg=BACKGROUND,
+            fg=BUTTON,
+            activebackground=BACKGROUND,
+            activeforeground=BUTTON_HOVER,
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            command=self._send_image
+        )
+
+        self.image_button.pack(
+            side="left",
+            padx=(
+                10,
+                2
+            ),
+            pady=10
+        )
+
+        # -------------------------
+        # ENTRY
         # -------------------------
 
         self.message_entry = tk.Entry(
@@ -373,7 +343,7 @@ class ChatView(tk.Frame):
             fill="x",
             expand=True,
             padx=(
-                12,
+                4,
                 6
             ),
             pady=10,
@@ -381,7 +351,7 @@ class ChatView(tk.Frame):
         )
 
         # -------------------------
-        # SEND BUTTON
+        # SEND
         # -------------------------
 
         self.send_button = tk.Button(
@@ -412,8 +382,6 @@ class ChatView(tk.Frame):
             ipadx=8
         )
 
-        # Press Enter to send.
-
         self.message_entry.bind(
             "<Return>",
             self._enter_pressed
@@ -422,7 +390,7 @@ class ChatView(tk.Frame):
         self.message_entry.focus()
 
     # =========================
-    # LOAD EXISTING MESSAGES
+    # LOAD HISTORY
     # =========================
 
     def _load_existing_messages(self):
@@ -468,10 +436,6 @@ class ChatView(tk.Frame):
             sender == self.username
         )
 
-        # -------------------------
-        # NEW SENDER
-        # -------------------------
-
         if sender != self.last_sender:
 
             self.current_group = MessageGroup(
@@ -492,24 +456,16 @@ class ChatView(tk.Frame):
 
             self.last_sender = sender
 
-        # -------------------------
-        # ADD MESSAGE
-        # -------------------------
-
         self.current_group.add_message(
             message
         )
-
-        # -------------------------
-        # SCROLL
-        # -------------------------
 
         if scroll:
 
             self._scroll_to_bottom()
 
     # =========================
-    # SEND MESSAGE
+    # SEND TEXT
     # =========================
 
     def _send_current_message(self):
@@ -547,6 +503,11 @@ class ChatView(tk.Frame):
             print(error)
             print()
 
+            messagebox.showerror(
+                "Send Failed",
+                str(error)
+            )
+
         finally:
 
             self.send_button.config(
@@ -554,6 +515,56 @@ class ChatView(tk.Frame):
             )
 
             self.message_entry.focus()
+
+    # =========================
+    # SEND IMAGE
+    # =========================
+
+    def _send_image(self):
+
+        self.image_button.config(
+            state="disabled"
+        )
+
+        try:
+
+            image_url = upload_selected_image()
+
+            if not image_url:
+
+                return
+
+            send_image_message(
+                self.username,
+                image_url
+            )
+
+        except Exception as error:
+
+            print()
+            print("==============================")
+            print("IMAGE MESSAGE ERROR")
+            print("==============================")
+            print(error)
+            print("==============================")
+            print()
+
+            messagebox.showerror(
+                "Image Send Failed",
+                str(error)
+            )
+
+        finally:
+
+            self.image_button.config(
+                state="normal"
+            )
+
+            self.message_entry.focus()
+
+    # =========================
+    # ENTER
+    # =========================
 
     def _enter_pressed(
         self,
@@ -573,11 +584,6 @@ class ChatView(tk.Frame):
         message
     ):
 
-        # Realtime runs in another thread.
-        #
-        # Tkinter GUI changes must happen
-        # on the main thread.
-
         self.after(
             0,
             lambda: self._add_realtime_message(
@@ -596,7 +602,7 @@ class ChatView(tk.Frame):
         )
 
     # =========================
-    # SCROLL TO BOTTOM
+    # SCROLL
     # =========================
 
     def _scroll_to_bottom(self):
