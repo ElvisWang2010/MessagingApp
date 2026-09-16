@@ -3,9 +3,7 @@ import tkinter as tk
 from config import (
     CHAT_BACKGROUND,
     TEXT,
-    MUTED_TEXT,
-    BUTTON,
-    WINDOW_WIDTH
+    BUTTON
 )
 
 
@@ -13,22 +11,22 @@ from config import (
 # BUBBLE SETTINGS
 # =========================
 
-BUBBLE_PADDING_X = 14
-BUBBLE_PADDING_Y = 9
+BUBBLE_PADDING_X = 13
+BUBBLE_PADDING_Y = 8
 
-BUBBLE_MAX_WIDTH = 330
+BUBBLE_MAX_WIDTH = 310
 
-CORNER_RADIUS = 16
+CORNER_RADIUS = 18
 
 MY_BUBBLE = BUTTON
-OTHER_BUBBLE = "#FFE0E8"
+OTHER_BUBBLE = "#FFE8EE"
 
 MY_TEXT = "white"
 OTHER_TEXT = TEXT
 
 
 # =========================
-# DRAWING
+# DRAW ROUNDED RECTANGLE
 # =========================
 
 def draw_rounded_rectangle(
@@ -40,12 +38,6 @@ def draw_rounded_rectangle(
     radius,
     fill
 ):
-    """
-    Draw a rounded rectangle on a Tkinter Canvas.
-
-    Tkinter does not provide a native rounded rectangle,
-    so the shape is built from rectangles and arcs.
-    """
 
     canvas.create_rectangle(
         x1 + radius,
@@ -173,18 +165,22 @@ class MessageBubble(tk.Frame):
 
         temporary.update_idletasks()
 
-        text_width = temporary.winfo_reqwidth()
-        text_height = temporary.winfo_reqheight()
+        text_width = (
+            temporary.winfo_reqwidth()
+        )
+
+        text_height = (
+            temporary.winfo_reqheight()
+        )
 
         temporary.destroy()
 
         width = min(
-            text_width + BUBBLE_PADDING_X * 2,
-            BUBBLE_MAX_WIDTH + BUBBLE_PADDING_X * 2
+            text_width
+            + BUBBLE_PADDING_X * 2,
+            BUBBLE_MAX_WIDTH
+            + BUBBLE_PADDING_X * 2
         )
-
-        if text_width + BUBBLE_PADDING_X * 2 > width:
-            width = BUBBLE_MAX_WIDTH + BUBBLE_PADDING_X * 2
 
         height = (
             text_height
@@ -250,14 +246,22 @@ class MessageBubble(tk.Frame):
             self._handle_leave
         )
 
-    def _handle_enter(self, event=None):
+    def _handle_enter(
+        self,
+        event=None
+    ):
 
         if self.on_enter_callback:
+
             self.on_enter_callback()
 
-    def _handle_leave(self, event=None):
+    def _handle_leave(
+        self,
+        event=None
+    ):
 
         if self.on_leave_callback:
+
             self.on_leave_callback()
 
     # =========================

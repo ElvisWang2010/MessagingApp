@@ -80,6 +80,24 @@ def send_message(
     return response.data
 
 
+def delete_message(
+    message_id
+):
+
+    response = (
+        supabase
+        .table("messages")
+        .delete()
+        .eq(
+            "id",
+            message_id
+        )
+        .execute()
+    )
+
+    return response.data
+
+
 # =========================
 # IMAGE MESSAGES
 # =========================
@@ -108,7 +126,9 @@ def send_image_message(
 # IMAGE UPLOAD
 # =========================
 
-def upload_image(file_path):
+def upload_image(
+    file_path
+):
 
     extension = os.path.splitext(
         file_path
@@ -167,6 +187,7 @@ def upload_image(file_path):
 
     print("Public URL:")
     print(image_url)
+
     print("==============================")
     print()
 
@@ -219,6 +240,7 @@ def get_reactions(
         reaction = item["reaction"]
 
         if reaction not in reactions:
+
             reactions[reaction] = 0
 
         reactions[reaction] += 1
@@ -251,7 +273,10 @@ def add_reaction(
         .execute()
     )
 
-    # Toggle OFF
+    # -------------------------
+    # TOGGLE OFF
+    # -------------------------
+
     if existing.data:
 
         reaction_id = (
@@ -271,7 +296,10 @@ def add_reaction(
 
         return False
 
-    # Toggle ON
+    # -------------------------
+    # TOGGLE ON
+    # -------------------------
+
     (
         supabase
         .table("reactions")

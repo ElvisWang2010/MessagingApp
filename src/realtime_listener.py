@@ -9,13 +9,12 @@ from config import (
 )
 
 
-# ==========================================================
-# REALTIME LISTENER
-# ==========================================================
+# =========================
+# LISTENER
+# =========================
 
-async def listen_for_changes(
-    message_callback,
-    reaction_callback
+async def listen_for_messages(
+    callback
 ):
 
     supabase = await acreate_client(
@@ -24,57 +23,21 @@ async def listen_for_changes(
     )
 
     channel = supabase.channel(
-        "messaging-app-realtime"
+        "chat-realtime"
     )
 
-    # ======================================================
-    # MESSAGE INSERTS
-    # ======================================================
+    # =========================
+    # MESSAGE EVENTS
+    # =========================
 
-    def handle_message(payload):
+    def handle_message(
+        payload
+    ):
 
         print()
-        print("==============================")
         print("REALTIME MESSAGE EVENT")
-        print("==============================")
         print(payload)
-        print("==============================")
-        print()
-
-        data = payload.get(
-            "data",
-            {}
-        )
-
-        record = data.get(
-            "record"
-        )
-
-        if record:
-
-            message_callback(
-                record
-            )
-
-    channel.on_postgres_changes(
-        event="INSERT",
-        schema="public",
-        table="messages",
-        callback=handle_message
-    )
-
-    # ======================================================
-    # REACTION CHANGES
-    # ======================================================
-
-    def handle_reaction(payload):
-
-        print()
-        print("==============================")
-        print("REALTIME REACTION EVENT")
-        print("==============================")
-        print(payload)
-        print("==============================")
+        print("=================================")
         print()
 
         data = payload.get(
@@ -90,31 +53,107 @@ async def listen_for_changes(
             "old_record"
         )
 
-        reaction_callback(
-            record,
-            old_record,
-            data.get("type")
+        event_type = data.get(
+            "type"
         )
 
-    # INSERT
+        # -------------------------
+        # INSERT
+        # -------------------------
+
+        if (
+            event_type
+            and str(event_type).upper()
+            == "INSERT"
+        ):
+
+            if record:
+
+                callback(
+                    "message",
+                    {
+                        "action": "INSERT",
+                        "record": record
+                    }
+                )
+
+        # -------------------------
+        # DELETE
+        # -------------------------
+
+        elif (
+            event_type
+            and str(event_type).upper()
+            == "DELETE"
+        ):
+
+            callback(
+                "message",
+                {
+                    "action": "DELETE",
+                    "record": old_record or record
+                }
+            )
+
     channel.on_postgres_changes(
-        event="INSERT",
+        event="*",
+        schema="public",
+        table="messages",
+        callback=handle_message
+    )
+
+    # =========================
+    # REACTIONS
+    # =========================
+
+    def handle_reaction(
+        payload
+    ):
+
+        print()
+        print("REALTIME REACTION EVENT")
+        print(payload)
+        print("=================================")
+        print()
+
+        data = payload.get(
+            "data",
+            {}
+        )
+
+        record = data.get(
+            "record"
+        )
+
+        old_record = data.get(
+            "old_record"
+        )
+
+        event_type = data.get(
+            "type"
+        )
+
+        callback(
+            "reaction",
+            {
+                "record": record,
+                "old_record": old_record,
+                "action": str(
+                    event_type
+                ).upper()
+            }
+        )
+
+    channel.on_postgres_changes(
+        event="*",
         schema="public",
         table="reactions",
         callback=handle_reaction
     )
 
-    # DELETE
-    channel.on_postgres_changes(
-        event="DELETE",
-        schema="public",
-        table="reactions",
-        callback=handle_reaction
-    )
-
-    # ======================================================
-    # SUBSCRIBE
-    # ======================================================
+    # =========================
+    # CONNECT
+    # =========================
 
     await channel.subscribe()
 
@@ -122,9 +161,9 @@ async def listen_for_changes(
         "Realtime listener connected."
     )
 
-    # ======================================================
+    # =========================
     # KEEP ALIVE
-    # ======================================================
+    # =========================
 
     while True:
 
@@ -133,35 +172,21 @@ async def listen_for_changes(
         )
 
 
-# ==========================================================
-# START LISTENER
-# ==========================================================
+# =========================
+# THREAD
+# =========================
 
 def start_realtime_listener(
-    message_callback,
-    reaction_callback
+    callback
 ):
 
     def run():
 
-        try:
-
-            asyncio.run(
-                listen_for_changes(
-                    message_callback,
-                    reaction_callback
-                )
+        asyncio.run(
+            listen_for_messages(
+                callback
             )
-
-        except Exception as error:
-
-            print()
-            print("==============================")
-            print("REALTIME LISTENER ERROR")
-            print("==============================")
-            print(error)
-            print("==============================")
-            print()
+        )
 
     thread = threading.Thread(
         target=run,

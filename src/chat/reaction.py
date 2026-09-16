@@ -3,6 +3,7 @@ import tkinter as tk
 from config import (
     CHAT_BACKGROUND,
     TEXT,
+    MUTED_TEXT,
     BUTTON,
     BUTTON_HOVER
 )
@@ -42,14 +43,19 @@ class ReactionPicker(tk.Frame):
 
         super().__init__(
             parent,
-            bg="white",
-            bd=1,
-            relief="solid"
+            bg="#FFFFFF",
+            bd=0,
+            highlightthickness=1,
+            highlightbackground="#E8DDE1"
         )
 
         self.on_reaction = on_reaction
 
         self._create_buttons()
+
+    # =========================
+    # CREATE BUTTONS
+    # =========================
 
     def _create_buttons(self):
 
@@ -59,24 +65,27 @@ class ReactionPicker(tk.Frame):
                 self,
                 text=reaction,
                 font=EMOJI_FONT,
-                bg="white",
+                bg="#FFFFFF",
                 fg=TEXT,
-                activebackground="#FFE5EC",
+                activebackground="#FFF1F5",
                 activeforeground=TEXT,
                 relief="flat",
                 bd=0,
+                highlightthickness=0,
                 cursor="hand2",
-                padx=3,
-                pady=2,
+                padx=4,
+                pady=3,
                 command=lambda emoji=reaction:
-                    self._select_reaction(
-                        emoji
-                    )
+                    self._select_reaction(emoji)
             )
 
             button.pack(
                 side="left"
             )
+
+    # =========================
+    # SELECT REACTION
+    # =========================
 
     def _select_reaction(
         self,
@@ -109,48 +118,53 @@ class ReactionDisplay(tk.Frame):
         )
 
         self.reactions = reactions
+
         self.on_reaction_click = (
             on_reaction_click
         )
 
         self._create_display()
 
+    # =========================
+    # CREATE DISPLAY
+    # =========================
+
     def _create_display(self):
 
-        for reaction, count in (
-            self.reactions.items()
-        ):
+        for reaction, count in self.reactions.items():
 
             if count <= 0:
                 continue
 
             button = tk.Button(
                 self,
-                text=(
-                    f"{reaction} {count}"
-                ),
+                text=f"{reaction} {count}",
                 font=(
                     "Segoe UI Emoji",
                     9
                 ),
-                bg="#FFE0E8",
-                fg=TEXT,
-                activebackground="#FFD0DC",
+                bg=CHAT_BACKGROUND,
+                fg=MUTED_TEXT,
+                activebackground=CHAT_BACKGROUND,
+                activeforeground=BUTTON_HOVER,
                 relief="flat",
                 bd=0,
+                highlightthickness=0,
                 cursor="hand2",
-                padx=6,
-                pady=1,
+                padx=2,
+                pady=0,
                 command=lambda emoji=reaction:
-                    self._clicked(
-                        emoji
-                    )
+                    self._clicked(emoji)
             )
 
             button.pack(
                 side="left",
-                padx=2
+                padx=1
             )
+
+    # =========================
+    # REACTION CLICK
+    # =========================
 
     def _clicked(
         self,
@@ -165,7 +179,7 @@ class ReactionDisplay(tk.Frame):
 
 
 # =========================
-# REACTION BUTTON
+# LEGACY REACTION BUTTON
 # =========================
 
 class ReactionButton(tk.Button):
@@ -178,19 +192,21 @@ class ReactionButton(tk.Button):
 
         super().__init__(
             parent,
-            text="♡",
+            text="···",
             font=(
                 "Arial",
-                11
+                11,
+                "bold"
             ),
             bg=CHAT_BACKGROUND,
             fg=BUTTON,
-            activebackground="#FFE5EC",
+            activebackground=CHAT_BACKGROUND,
             activeforeground=BUTTON_HOVER,
             relief="flat",
             bd=0,
+            highlightthickness=0,
             cursor="hand2",
-            padx=4,
-            pady=2,
+            padx=3,
+            pady=1,
             command=command
         )

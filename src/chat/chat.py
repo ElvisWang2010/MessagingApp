@@ -24,15 +24,12 @@ from config import (
 )
 
 from .message import MessageGroup
-
-from .image import (
-    upload_selected_image
-)
+from .image import upload_selected_image
 
 
-# ==========================================================
+# =========================
 # SETTINGS
-# ==========================================================
+# =========================
 
 HEADER_HEIGHT = 60
 INPUT_HEIGHT = 55
@@ -42,9 +39,9 @@ MESSAGE_PADDING_X = 12
 SCROLL_SPEED = 3
 
 
-# ==========================================================
+# =========================
 # CHAT VIEW
-# ==========================================================
+# =========================
 
 class ChatView(tk.Frame):
 
@@ -64,25 +61,25 @@ class ChatView(tk.Frame):
         self.current_group = None
         self.last_sender = None
 
-        # Keep every message row by message ID.
+        # All displayed messages
         self.message_rows = {}
 
+        # Message -> group
+        self.message_groups = {}
+
         self._create_header()
-
         self._create_chat_area()
-
         self._create_input_area()
 
         self._load_existing_messages()
 
         start_realtime_listener(
-            self._receive_realtime_message,
-            self._receive_realtime_reaction
+            self._receive_realtime_event
         )
 
-    # ======================================================
+    # =========================
     # HEADER
-    # ======================================================
+    # =========================
 
     def _create_header(self):
 
@@ -133,9 +130,9 @@ class ChatView(tk.Frame):
             padx=18
         )
 
-    # ======================================================
+    # =========================
     # CHAT AREA
-    # ======================================================
+    # =========================
 
     def _create_chat_area(self):
 
@@ -203,9 +200,9 @@ class ChatView(tk.Frame):
 
         self._setup_scrolling()
 
-    # ======================================================
+    # =========================
     # SCROLLING
-    # ======================================================
+    # =========================
 
     def _setup_scrolling(self):
 
@@ -281,9 +278,9 @@ class ChatView(tk.Frame):
             width=event.width
         )
 
-    # ======================================================
+    # =========================
     # INPUT
-    # ======================================================
+    # =========================
 
     def _create_input_area(self):
 
@@ -301,13 +298,13 @@ class ChatView(tk.Frame):
             False
         )
 
-        # --------------------------------------------------
-        # IMAGE BUTTON
-        # --------------------------------------------------
+        # -------------------------
+        # IMAGE
+        # -------------------------
 
         self.image_button = tk.Button(
             self.input_container,
-            text="+",
+            text="＋",
             font=(
                 "Arial",
                 18
@@ -318,6 +315,7 @@ class ChatView(tk.Frame):
             activeforeground=BUTTON_HOVER,
             relief="flat",
             bd=0,
+            highlightthickness=0,
             cursor="hand2",
             command=self._send_image
         )
@@ -331,9 +329,9 @@ class ChatView(tk.Frame):
             pady=10
         )
 
-        # --------------------------------------------------
+        # -------------------------
         # ENTRY
-        # --------------------------------------------------
+        # -------------------------
 
         self.message_entry = tk.Entry(
             self.input_container,
@@ -344,7 +342,8 @@ class ChatView(tk.Frame):
             bg=INPUT_BACKGROUND,
             fg=TEXT,
             relief="flat",
-            bd=0
+            bd=0,
+            highlightthickness=0
         )
 
         self.message_entry.pack(
@@ -359,9 +358,9 @@ class ChatView(tk.Frame):
             ipady=8
         )
 
-        # --------------------------------------------------
+        # -------------------------
         # SEND
-        # --------------------------------------------------
+        # -------------------------
 
         self.send_button = tk.Button(
             self.input_container,
@@ -377,6 +376,7 @@ class ChatView(tk.Frame):
             activeforeground="white",
             relief="flat",
             bd=0,
+            highlightthickness=0,
             cursor="hand2",
             command=self._send_current_message
         )
@@ -398,9 +398,9 @@ class ChatView(tk.Frame):
 
         self.message_entry.focus()
 
-    # ======================================================
+    # =========================
     # LOAD HISTORY
-    # ======================================================
+    # =========================
 
     def _load_existing_messages(self):
 
@@ -422,15 +422,13 @@ class ChatView(tk.Frame):
         except Exception as error:
 
             print()
-            print(
-                "MESSAGE LOAD ERROR:"
-            )
+            print("MESSAGE LOAD ERROR:")
             print(error)
             print()
 
-    # ======================================================
+    # =========================
     # ADD MESSAGE
-    # ======================================================
+    # =========================
 
     def _add_message(
         self,
@@ -442,13 +440,12 @@ class ChatView(tk.Frame):
             "id"
         )
 
-        # --------------------------------------------------
-        # DUPLICATE PROTECTION
-        # --------------------------------------------------
+        if message_id is not None:
 
-        if message_id in self.message_rows:
-
-            return
+            if message_id in self.message_rows:
+                return self.message_rows[
+                    message_id
+                ]
 
         sender = message.get(
             "sender",
@@ -459,11 +456,14 @@ class ChatView(tk.Frame):
             sender == self.username
         )
 
-        # --------------------------------------------------
-        # NEW SENDER GROUP
-        # --------------------------------------------------
+        # -------------------------
+        # GROUP
+        # -------------------------
 
-        if sender != self.last_sender:
+        if (
+            self.current_group is None
+            or sender != self.last_sender
+        ):
 
             self.current_group = MessageGroup(
                 self.messages_frame,
@@ -476,38 +476,100 @@ class ChatView(tk.Frame):
                 fill="x",
                 padx=MESSAGE_PADDING_X,
                 pady=(
-                    8,
+                    6,
                     0
                 )
             )
 
             self.last_sender = sender
 
-        # --------------------------------------------------
-        # ADD MESSAGE
-        # --------------------------------------------------
+        # -------------------------
+        # MESSAGE
+        # -------------------------
 
         row = self.current_group.add_message(
-            message
+            message,
+            username=self.username,
+            on_delete=self._delete_message
         )
 
-        # --------------------------------------------------
-        # STORE ROW
-        # --------------------------------------------------
-
-        if message_id:
+        if message_id is not None:
 
             self.message_rows[
                 message_id
             ] = row
 
+            self.message_groups[
+                message_id
+            ] = self.current_group
+
         if scroll:
 
             self._scroll_to_bottom()
 
-    # ======================================================
+        return row
+
+    # =========================
+    # DELETE MESSAGE
+    # =========================
+
+    def _delete_message(
+        self,
+        message_id
+    ):
+
+        row = self.message_rows.get(
+            message_id
+        )
+
+        group = self.message_groups.get(
+            message_id
+        )
+
+        if row is None:
+
+            return
+
+        if group is not None:
+
+            group.remove_message(
+                row
+            )
+
+        else:
+
+            row.destroy()
+
+        self.message_rows.pop(
+            message_id,
+            None
+        )
+
+        self.message_groups.pop(
+            message_id,
+            None
+        )
+
+        # Remove empty group
+        if (
+            group is not None
+            and group.message_count() == 0
+        ):
+
+            group.destroy()
+
+            if self.current_group is group:
+
+                self.current_group = None
+                self.last_sender = None
+
+        self.update_idletasks()
+
+        self._update_scroll_region()
+
+    # =========================
     # SEND TEXT
-    # ======================================================
+    # =========================
 
     def _send_current_message(self):
 
@@ -518,7 +580,6 @@ class ChatView(tk.Frame):
         )
 
         if not content:
-
             return
 
         self.send_button.config(
@@ -527,32 +588,20 @@ class ChatView(tk.Frame):
 
         try:
 
-            response = send_message(
+            inserted = send_message(
                 self.username,
                 content
             )
 
-            # ------------------------------------------------
-            # IMMEDIATELY DISPLAY OWN MESSAGE
-            # ------------------------------------------------
+            # Display immediately
+            if inserted:
 
-            if response:
+                for message in inserted:
 
-                if isinstance(
-                    response,
-                    list
-                ):
-
-                    message = response[0]
-
-                else:
-
-                    message = response
-
-                self._add_message(
-                    message,
-                    scroll=True
-                )
+                    self._add_message(
+                        message,
+                        scroll=True
+                    )
 
             self.message_entry.delete(
                 0,
@@ -562,9 +611,7 @@ class ChatView(tk.Frame):
         except Exception as error:
 
             print()
-            print(
-                "MESSAGE SEND ERROR:"
-            )
+            print("MESSAGE SEND ERROR:")
             print(error)
             print()
 
@@ -581,9 +628,9 @@ class ChatView(tk.Frame):
 
             self.message_entry.focus()
 
-    # ======================================================
+    # =========================
     # SEND IMAGE
-    # ======================================================
+    # =========================
 
     def _send_image(self):
 
@@ -596,43 +643,31 @@ class ChatView(tk.Frame):
             image_url = upload_selected_image()
 
             if not image_url:
-
                 return
 
-            response = send_image_message(
+            inserted = send_image_message(
                 self.username,
                 image_url
             )
 
-            # ------------------------------------------------
-            # IMMEDIATELY DISPLAY OWN IMAGE
-            # ------------------------------------------------
+            if inserted:
 
-            if response:
+                for message in inserted:
 
-                if isinstance(
-                    response,
-                    list
-                ):
-
-                    message = response[0]
-
-                else:
-
-                    message = response
-
-                self._add_message(
-                    message,
-                    scroll=True
-                )
+                    self._add_message(
+                        message,
+                        scroll=True
+                    )
 
         except Exception as error:
 
             print()
-            print(
-                "IMAGE MESSAGE ERROR:"
-            )
+            print("==============================")
+            print("IMAGE MESSAGE ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
+            print()
 
             messagebox.showerror(
                 "Image Send Failed",
@@ -647,9 +682,9 @@ class ChatView(tk.Frame):
 
             self.message_entry.focus()
 
-    # ======================================================
+    # =========================
     # ENTER
-    # ======================================================
+    # =========================
 
     def _enter_pressed(
         self,
@@ -660,88 +695,108 @@ class ChatView(tk.Frame):
 
         return "break"
 
-    # ======================================================
-    # REALTIME MESSAGE
-    # ======================================================
+    # =========================
+    # REALTIME
+    # =========================
 
-    def _receive_realtime_message(
+    def _receive_realtime_event(
         self,
-        message
+        event_type,
+        data
     ):
 
         self.after(
             0,
-            lambda: self._add_realtime_message(
-                message
+            lambda: self._handle_realtime_event(
+                event_type,
+                data
             )
         )
 
-    def _add_realtime_message(
+    def _handle_realtime_event(
         self,
-        message
+        event_type,
+        data
     ):
 
-        self._add_message(
-            message,
-            scroll=True
-        )
+        if event_type == "message":
 
-    # ======================================================
-    # REALTIME REACTION
-    # ======================================================
-
-    def _receive_realtime_reaction(
-        self,
-        record,
-        old_record,
-        event_type
-    ):
-
-        self.after(
-            0,
-            lambda: self._update_reaction(
-                record,
-                old_record
+            action = data.get(
+                "action"
             )
-        )
 
-    def _update_reaction(
-        self,
-        record,
-        old_record
-    ):
+            record = data.get(
+                "record"
+            )
 
-        reaction_record = (
-            record
-            if record
-            else old_record
-        )
+            if action == "INSERT":
 
-        if not reaction_record:
+                if record:
 
-            return
+                    self._add_message(
+                        record,
+                        scroll=True
+                    )
 
-        message_id = reaction_record.get(
-            "message_id"
-        )
+            elif action == "DELETE":
 
-        if not message_id:
+                if record:
 
-            return
+                    message_id = record.get(
+                        "id"
+                    )
 
-        row = self.message_rows.get(
-            message_id
-        )
+                    if message_id:
 
-        if not row:
+                        self._delete_message(
+                            message_id
+                        )
 
-            return
+        elif event_type == "reaction":
 
-        row.refresh_reactions()
+            record = data.get(
+                "record"
+            )
 
-    # ======================================================
+            old_record = data.get(
+                "old_record"
+            )
+
+            action = data.get(
+                "action"
+            )
+
+            message_id = None
+
+            if record:
+
+                message_id = record.get(
+                    "message_id"
+                )
+
+            if (
+                message_id is None
+                and old_record
+            ):
+
+                message_id = old_record.get(
+                    "message_id"
+                )
+
+            if message_id is None:
+                return
+
+            row = self.message_rows.get(
+                message_id
+            )
+
+            if row:
+
+                row.refresh_reactions()
+
+    # =========================
     # SCROLL
-    # ======================================================
+    # =========================
 
     def _scroll_to_bottom(self):
 
@@ -762,14 +817,12 @@ class ChatView(tk.Frame):
 
         self.chat_canvas.yview_moveto(
             1.0
-
-
         )
 
 
-# ==========================================================
+# =========================
 # PUBLIC CREATOR
-# ==========================================================
+# =========================
 
 def create_chat_screen(
     window,
