@@ -9,12 +9,13 @@ from config import (
 )
 
 
-# =========================
-# LISTENER
-# =========================
+# ==========================================================
+# REALTIME LISTENER
+# ==========================================================
 
-async def listen_for_messages(
-    callback
+async def listen_for_changes(
+    message_callback,
+    reaction_callback
 ):
 
     supabase = await acreate_client(
@@ -23,21 +24,21 @@ async def listen_for_messages(
     )
 
     channel = supabase.channel(
-        "chat-realtime"
+        "messaging-app-realtime"
     )
 
-    # =========================
-    # MESSAGES
-    # =========================
+    # ======================================================
+    # MESSAGE INSERTS
+    # ======================================================
 
-    def handle_message(
-        payload
-    ):
+    def handle_message(payload):
 
         print()
+        print("==============================")
         print("REALTIME MESSAGE EVENT")
+        print("==============================")
         print(payload)
-        print("=================================")
+        print("==============================")
         print()
 
         data = payload.get(
@@ -51,8 +52,7 @@ async def listen_for_messages(
 
         if record:
 
-            callback(
-                "message",
+            message_callback(
                 record
             )
 
@@ -63,18 +63,18 @@ async def listen_for_messages(
         callback=handle_message
     )
 
-    # =========================
-    # REACTIONS
-    # =========================
+    # ======================================================
+    # REACTION CHANGES
+    # ======================================================
 
-    def handle_reaction(
-        payload
-    ):
+    def handle_reaction(payload):
 
         print()
+        print("==============================")
         print("REALTIME REACTION EVENT")
+        print("==============================")
         print(payload)
-        print("=================================")
+        print("==============================")
         print()
 
         data = payload.get(
@@ -90,27 +90,31 @@ async def listen_for_messages(
             "old_record"
         )
 
-        callback(
-            "reaction",
-            {
-                "record": record,
-                "old_record": old_record,
-                "event": data.get(
-                    "type"
-                )
-            }
+        reaction_callback(
+            record,
+            old_record,
+            data.get("type")
         )
 
+    # INSERT
     channel.on_postgres_changes(
-        event="*",
+        event="INSERT",
         schema="public",
         table="reactions",
         callback=handle_reaction
     )
 
-    # =========================
-    # CONNECT
-    # =========================
+    # DELETE
+    channel.on_postgres_changes(
+        event="DELETE",
+        schema="public",
+        table="reactions",
+        callback=handle_reaction
+    )
+
+    # ======================================================
+    # SUBSCRIBE
+    # ======================================================
 
     await channel.subscribe()
 
@@ -118,9 +122,9 @@ async def listen_for_messages(
         "Realtime listener connected."
     )
 
-    # =========================
+    # ======================================================
     # KEEP ALIVE
-    # =========================
+    # ======================================================
 
     while True:
 
@@ -129,25 +133,39 @@ async def listen_for_messages(
         )
 
 
-# =========================
-# THREAD
-# =========================
+# ==========================================================
+# START LISTENER
+# ==========================================================
 
 def start_realtime_listener(
-    callback
+    message_callback,
+    reaction_callback
 ):
 
     def run():
 
-        asyncio.run(
-            listen_for_messages(
-                callback
+        try:
+
+            asyncio.run(
+                listen_for_changes(
+                    message_callback,
+                    reaction_callback
+                )
             )
-        )
+
+        except Exception as error:
+
+            print()
+            print("==============================")
+            print("REALTIME LISTENER ERROR")
+            print("==============================")
+            print(error)
+            print("==============================")
+            print()
 
     thread = threading.Thread(
         target=run,
         daemon=True
     )
 
-    thread.start()  
+    thread.start()

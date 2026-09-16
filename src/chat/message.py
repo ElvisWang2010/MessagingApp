@@ -2,7 +2,10 @@ import tkinter as tk
 
 from .bubble import MessageBubble
 from .image import ChatImage
-from .reaction import ReactionPicker, ReactionDisplay
+from .reaction import (
+    ReactionPicker,
+    ReactionDisplay
+)
 
 from database import (
     get_reactions,
@@ -67,28 +70,37 @@ class MessageRow(tk.Frame):
         self.username = username
 
         self.hide_job = None
+
         self.reaction_picker = None
         self.reaction_display = None
 
         self._create_row()
 
     # =========================
-    # CREATE
+    # CREATE ROW
     # =========================
 
     def _create_row(self):
 
-        self.content_frame = tk.Frame(
+        # ------------------------------------------------------
+        # MAIN ROW
+        # ------------------------------------------------------
+
+        self.main_row = tk.Frame(
             self,
             bg=CHAT_BACKGROUND
         )
 
-        self.content_frame.pack(
+        self.main_row.pack(
             fill="x"
         )
 
+        # ------------------------------------------------------
+        # MESSAGE LINE
+        # ------------------------------------------------------
+
         self.message_line = tk.Frame(
-            self.content_frame,
+            self.main_row,
             bg=CHAT_BACKGROUND
         )
 
@@ -100,9 +112,9 @@ class MessageRow(tk.Frame):
             )
         )
 
-        # -------------------------
+        # ------------------------------------------------------
         # MESSAGE CONTENT
-        # -------------------------
+        # ------------------------------------------------------
 
         message_type = self.message.get(
             "message_type",
@@ -140,9 +152,9 @@ class MessageRow(tk.Frame):
             side="left"
         )
 
-        # -------------------------
+        # ------------------------------------------------------
         # REACTION BUTTON
-        # -------------------------
+        # ------------------------------------------------------
 
         self.reaction_button = tk.Button(
             self.message_line,
@@ -166,9 +178,9 @@ class MessageRow(tk.Frame):
             )
         )
 
-        # -------------------------
+        # ------------------------------------------------------
         # TIMESTAMP
-        # -------------------------
+        # ------------------------------------------------------
 
         self.timestamp = tk.Label(
             self,
@@ -190,14 +202,26 @@ class MessageRow(tk.Frame):
             self._timestamp_leave
         )
 
-        # -------------------------
-        # REACTIONS
-        # -------------------------
+        # ------------------------------------------------------
+        # REACTION AREA
+        # ------------------------------------------------------
+
+        self.reaction_area = tk.Frame(
+            self,
+            bg=CHAT_BACKGROUND
+        )
+
+        self.reaction_area.pack(
+            fill="x"
+        )
+
+        # Start hidden.
+        self.reaction_area.pack_forget()
 
         self._load_reactions()
 
     # =========================
-    # REACTIONS
+    # LOAD REACTIONS
     # =========================
 
     def _load_reactions(self):
@@ -207,7 +231,6 @@ class MessageRow(tk.Frame):
         )
 
         if not message_id:
-
             return
 
         try:
@@ -223,27 +246,39 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("REACTION LOAD ERROR:")
+            print("==============================")
+            print("REACTION LOAD ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
+
+    # =========================
+    # DISPLAY REACTIONS
+    # =========================
 
     def _display_reactions(
         self,
         reactions
     ):
 
+        # Remove old display.
         if self.reaction_display:
 
             self.reaction_display.destroy()
 
             self.reaction_display = None
 
+        # Nothing to display.
         if not reactions:
+
+            self.reaction_area.pack_forget()
 
             return
 
+        # Create reaction display.
         self.reaction_display = ReactionDisplay(
-            self.content_frame,
+            self.reaction_area,
             reactions,
             self._reaction_clicked
         )
@@ -258,6 +293,14 @@ class MessageRow(tk.Frame):
             pady=(2, 0)
         )
 
+        self.reaction_area.pack(
+            fill="x"
+        )
+
+    # =========================
+    # TOGGLE PICKER
+    # =========================
+
     def _toggle_reaction_picker(self):
 
         if self.reaction_picker:
@@ -268,11 +311,15 @@ class MessageRow(tk.Frame):
 
             return
 
+        # Create a dedicated picker row.
         self.reaction_picker = ReactionPicker(
-            self.content_frame,
+            self,
             self._reaction_selected
         )
 
+        # Place it directly underneath
+        # the message without changing the
+        # message bubble's layout.
         self.reaction_picker.pack(
             anchor=(
                 "e"
@@ -282,6 +329,12 @@ class MessageRow(tk.Frame):
             padx=4,
             pady=(2, 0)
         )
+
+        self.reaction_picker.lift()
+
+    # =========================
+    # REACTION SELECTED
+    # =========================
 
     def _reaction_selected(
         self,
@@ -294,9 +347,24 @@ class MessageRow(tk.Frame):
 
         if not message_id:
 
+            print(
+                "REACTION ERROR: "
+                "Message has no ID."
+            )
+
             return
 
         try:
+
+            print()
+            print("==============================")
+            print("REACTION")
+            print("==============================")
+            print("Message ID:", message_id)
+            print("Username:", self.username)
+            print("Reaction:", reaction)
+            print("==============================")
+            print()
 
             add_reaction(
                 message_id,
@@ -315,9 +383,16 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("REACTION ERROR:")
+            print("==============================")
+            print("REACTION ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
+
+    # =========================
+    # CLICK EXISTING REACTION
+    # =========================
 
     def _reaction_clicked(
         self,
@@ -360,9 +435,14 @@ class MessageRow(tk.Frame):
                 1
             )[0]
 
-            parts = time_part.split(":")
+            parts = time_part.split(
+                ":"
+            )
 
-            hour = int(parts[0])
+            hour = int(
+                parts[0]
+            )
+
             minute = parts[1]
 
             suffix = (
@@ -379,7 +459,10 @@ class MessageRow(tk.Frame):
 
                 hour = 12
 
-            return f"{hour}:{minute} {suffix}"
+            return (
+                f"{hour}:{minute} "
+                f"{suffix}"
+            )
 
         except (
             ValueError,
@@ -472,6 +555,10 @@ class MessageRow(tk.Frame):
 
         self.hide_job = None
 
+    # =========================
+    # CANCEL HIDE
+    # =========================
+
     def _cancel_hide(self):
 
         if self.hide_job is None:
@@ -489,6 +576,10 @@ class MessageRow(tk.Frame):
             pass
 
         self.hide_job = None
+
+    # =========================
+    # TIMESTAMP HOVER
+    # =========================
 
     def _timestamp_enter(
         self,
@@ -532,6 +623,10 @@ class MessageGroup(tk.Frame):
 
         self._create_group()
 
+    # =========================
+    # GROUP HEADER
+    # =========================
+
     def _create_group(self):
 
         self.sender_label = tk.Label(
@@ -554,6 +649,10 @@ class MessageGroup(tk.Frame):
                 2
             )
         )
+
+    # =========================
+    # ADD MESSAGE
+    # =========================
 
     def add_message(
         self,
@@ -586,11 +685,19 @@ class MessageGroup(tk.Frame):
 
         return row
 
+    # =========================
+    # MESSAGE COUNT
+    # =========================
+
     def message_count(self):
 
         return len(
             self.messages
         )
+
+    # =========================
+    # LAST MESSAGE
+    # =========================
 
     def last_message(self):
 
