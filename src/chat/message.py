@@ -3,7 +3,6 @@ import tkinter as tk
 from .bubble import MessageBubble
 from .image import ChatImage
 from .reaction import ReactionPicker, ReactionDisplay
-from .message_menu import MessageMenu
 
 from database import (
     get_reactions,
@@ -18,9 +17,9 @@ from config import (
 )
 
 
-# =========================
-# MESSAGE SETTINGS
-# =========================
+# ============================================================
+# SETTINGS
+# ============================================================
 
 MESSAGE_SPACING = 3
 
@@ -41,16 +40,16 @@ MENU_FONT = (
     "bold"
 )
 
-TIMESTAMP_HIDE_DELAY = 120
+TIMESTAMP_HIDE_DELAY = 250
 TIMESTAMP_GAP = 8
 
-MENU_HIDE_DELAY = 150
+MENU_HIDE_DELAY = 300
 MENU_GAP = 6
 
 
-# =========================
+# ============================================================
 # MESSAGE ROW
-# =========================
+# ============================================================
 
 class MessageRow(tk.Frame):
 
@@ -73,18 +72,40 @@ class MessageRow(tk.Frame):
         self.username = username
         self.on_delete = on_delete
 
+        # -------------------------
+        # Timers
+        # -------------------------
+
         self.hide_job = None
         self.menu_hide_job = None
+        self.timestamp_after_id = None
+
+        # -------------------------
+        # Widgets
+        # -------------------------
+
+        self.content = None
+        self.timestamp = None
+        self.menu_button = None
 
         self.reaction_picker = None
         self.reaction_display = None
-        self.message_menu = None
+
+        self.context_menu = None
+
+        # -------------------------
+        # Hover state
+        # -------------------------
+
+        self.hovering_content = False
+        self.hovering_menu = False
+        self.hovering_timestamp = False
 
         self._create_row()
 
-    # =========================
-    # CREATE
-    # =========================
+    # ========================================================
+    # CREATE ROW
+    # ========================================================
 
     def _create_row(self):
 
@@ -110,9 +131,9 @@ class MessageRow(tk.Frame):
             )
         )
 
-        # =========================
+        # ====================================================
         # MESSAGE CONTENT
-        # =========================
+        # ====================================================
 
         message_type = self.message.get(
             "message_type",
@@ -129,8 +150,8 @@ class MessageRow(tk.Frame):
                 image_url=self.message.get(
                     "image_url"
                 ),
-                on_enter=self._show_controls,
-                on_leave=self._schedule_hide_controls
+                on_enter=self._hover_enter,
+                on_leave=self._hover_leave
             )
 
         else:
@@ -142,13 +163,13 @@ class MessageRow(tk.Frame):
                     ""
                 ),
                 self.is_me,
-                on_enter=self._show_controls,
-                on_leave=self._schedule_hide_controls
+                on_enter=self._hover_enter,
+                on_leave=self._hover_leave
             )
 
-        # =========================
+        # ====================================================
         # THREE DOT BUTTON
-        # =========================
+        # ====================================================
 
         self.menu_button = tk.Button(
             self.message_line,
@@ -162,14 +183,24 @@ class MessageRow(tk.Frame):
             bd=0,
             highlightthickness=0,
             cursor="hand2",
-            padx=2,
+            padx=3,
             pady=0,
             command=self._open_menu
         )
 
-        # =========================
-        # MESSAGE ORDER
-        # =========================
+        self.menu_button.bind(
+            "<Enter>",
+            self._menu_enter
+        )
+
+        self.menu_button.bind(
+            "<Leave>",
+            self._menu_leave
+        )
+
+        # ====================================================
+        # MESSAGE POSITION
+        # ====================================================
 
         if self.is_me:
 
@@ -199,12 +230,13 @@ class MessageRow(tk.Frame):
                 )
             )
 
-        # Hide initially
+        # Hide until hovering
+
         self.menu_button.pack_forget()
 
-        # =========================
+        # ====================================================
         # TIMESTAMP
-        # =========================
+        # ====================================================
 
         self.timestamp = tk.Label(
             self,
@@ -226,114 +258,80 @@ class MessageRow(tk.Frame):
             self._timestamp_leave
         )
 
-        # =========================
+        # ====================================================
         # REACTIONS
-        # =========================
+        # ====================================================
 
         self._load_reactions()
 
-        # =========================
-        # HOVER
-        # =========================
-
-        self._bind_hover_events()
-
-    # =========================
-    # HOVER EVENTS
-    # =========================
-
-    def _bind_hover_events(self):
-
-        widgets = [
-            self,
-            self.content_frame,
-            self.message_line,
-            self.content
-        ]
-
-        if hasattr(
-            self.content,
-            "canvas"
-        ):
-
-            widgets.append(
-                self.content.canvas
-            )
-
-        for widget in widgets:
-
-            try:
-
-                widget.bind(
-                    "<Enter>",
-                    self._hover_enter,
-                    add="+"
-                )
-
-                widget.bind(
-                    "<Leave>",
-                    self._hover_leave,
-                    add="+"
-                )
-
-            except tk.TclError:
-                pass
+    # ========================================================
+    # HOVER
+    # ========================================================
 
     def _hover_enter(
         self,
         event=None
     ):
 
+        self.hovering_content = True
+
         self._cancel_hide()
         self._cancel_menu_hide()
 
         self._show_controls()
+        self._show_timestamp()
 
     def _hover_leave(
         self,
         event=None
     ):
 
-        self._schedule_hide_controls()
+        self.hovering_content = False
 
-    # =========================
+        self._schedule_hide_controls()
+        self._schedule_hide()
+
+    # ========================================================
     # SHOW CONTROLS
-    # =========================
+    # ========================================================
 
     def _show_controls(self):
 
         self._cancel_menu_hide()
-        self._cancel_hide()
 
-        if not self.menu_button.winfo_ismapped():
+        if self.menu_button is None:
+            return
 
-            if self.is_me:
+        if self.menu_button.winfo_ismapped():
+            return
 
-                self.menu_button.pack(
-                    side="left",
-                    before=self.content,
-                    padx=(
-                        0,
-                        MENU_GAP
-                    )
+        if self.is_me:
+
+            self.menu_button.pack(
+                side="left",
+                before=self.content,
+                padx=(
+                    0,
+                    MENU_GAP
                 )
+            )
 
-            else:
+        else:
 
-                self.menu_button.pack(
-                    side="left",
-                    after=self.content,
-                    padx=(
-                        MENU_GAP,
-                        0
-                    )
+            self.menu_button.pack(
+                side="left",
+                after=self.content,
+                padx=(
+                    MENU_GAP,
+                    0
                 )
+            )
 
         self.menu_button.lift()
 
-    # =========================
+    # ========================================================
     # HIDE CONTROLS
-    # =========================
+    # ========================================================
 
     def _schedule_hide_controls(self):
 
@@ -346,16 +344,23 @@ class MessageRow(tk.Frame):
 
     def _hide_controls(self):
 
-        if self.message_menu:
+        if (
+            self.hovering_content
+            or self.hovering_menu
+        ):
+            return
+
+        if self.context_menu is not None:
 
             try:
-                self.message_menu.close()
-            except Exception:
+                self.context_menu.unpost()
+            except tk.TclError:
                 pass
 
-            self.message_menu = None
+            self.context_menu = None
 
-        self.menu_button.pack_forget()
+        if self.menu_button is not None:
+            self.menu_button.pack_forget()
 
         self.menu_hide_job = None
 
@@ -375,19 +380,47 @@ class MessageRow(tk.Frame):
 
         self.menu_hide_job = None
 
-    # =========================
+    # ========================================================
+    # MENU HOVER
+    # ========================================================
+
+    def _menu_enter(
+        self,
+        event=None
+    ):
+
+        self.hovering_menu = True
+
+        self._cancel_menu_hide()
+        self._cancel_hide()
+
+    def _menu_leave(
+        self,
+        event=None
+    ):
+
+        self.hovering_menu = False
+
+        self._schedule_hide_controls()
+        self._schedule_hide()
+
+    # ========================================================
     # MESSAGE MENU
-    # =========================
+    # ========================================================
 
     def _open_menu(self):
+
         self._cancel_menu_hide()
 
-        if hasattr(self, "_context_menu") and self._context_menu is not None:
+        if self.context_menu is not None:
+
             try:
-                self._context_menu.unpost()
+                self.context_menu.unpost()
             except tk.TclError:
                 pass
-            self._context_menu = None
+
+            self.context_menu = None
+
             return
 
         menu = tk.Menu(
@@ -399,7 +432,10 @@ class MessageRow(tk.Frame):
             activeforeground="#222222",
             relief="solid",
             bd=1,
-            font=("Arial", 10)
+            font=(
+                "Arial",
+                10
+            )
         )
 
         menu.add_command(
@@ -408,32 +444,51 @@ class MessageRow(tk.Frame):
         )
 
         if self.is_me:
+
             menu.add_separator()
+
             menu.add_command(
                 label="Delete",
                 command=self._delete
             )
 
-        self._context_menu = menu
+        self.context_menu = menu
 
         try:
-            x = self.menu_button.winfo_rootx()
-            y = (
-                self.menu_button.winfo_rooty()
-                + self.menu_button.winfo_height()
-                + 3
+
+            x = (
+                self.menu_button.winfo_rootx()
+                + self.menu_button.winfo_width()
+                + 2
             )
 
-            menu.post(x, y)
+            y = (
+                self.menu_button.winfo_rooty()
+            )
+
+            menu.post(
+                x,
+                y
+            )
 
         except tk.TclError:
-            self._context_menu = None
 
-    # =========================
+            self.context_menu = None
+
+    # ========================================================
     # DELETE
-    # =========================
+    # ========================================================
 
     def _delete(self):
+
+        if self.context_menu is not None:
+
+            try:
+                self.context_menu.unpost()
+            except tk.TclError:
+                pass
+
+            self.context_menu = None
 
         message_id = self.message.get(
             "id"
@@ -457,13 +512,16 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("MESSAGE DELETE ERROR:")
+            print("==============================")
+            print("MESSAGE DELETE ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
 
-    # =========================
-    # LOAD REACTIONS
-    # =========================
+    # ========================================================
+    # REACTIONS
+    # ========================================================
 
     def _load_reactions(self):
 
@@ -487,13 +545,12 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("REACTION LOAD ERROR:")
+            print("==============================")
+            print("REACTION LOAD ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
-
-    # =========================
-    # REFRESH REACTIONS
-    # =========================
 
     def refresh_reactions(self):
 
@@ -501,10 +558,6 @@ class MessageRow(tk.Frame):
             return
 
         self._load_reactions()
-
-    # =========================
-    # DISPLAY REACTIONS
-    # =========================
 
     def _display_reactions(
         self,
@@ -539,23 +592,21 @@ class MessageRow(tk.Frame):
             )
         )
 
-    # =========================
+    # ========================================================
     # REACTION PICKER
-    # =========================
+    # ========================================================
 
     def _open_reaction_picker(self):
 
-        # Close menu first
-        if self.message_menu:
+        if self.context_menu is not None:
 
             try:
-                self.message_menu.close()
-            except Exception:
+                self.context_menu.unpost()
+            except tk.TclError:
                 pass
 
-            self.message_menu = None
+            self.context_menu = None
 
-        # Toggle picker
         if self.reaction_picker:
 
             self.reaction_picker.destroy()
@@ -581,10 +632,6 @@ class MessageRow(tk.Frame):
                 1
             )
         )
-
-    # =========================
-    # REACTION SELECTED
-    # =========================
 
     def _reaction_selected(
         self,
@@ -617,13 +664,12 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("REACTION ERROR:")
+            print("==============================")
+            print("REACTION ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
-
-    # =========================
-    # REACTION CLICKED
-    # =========================
 
     def _reaction_clicked(
         self,
@@ -634,9 +680,9 @@ class MessageRow(tk.Frame):
             reaction
         )
 
-    # =========================
+    # ========================================================
     # TIMESTAMP
-    # =========================
+    # ========================================================
 
     def _format_timestamp(self):
 
@@ -665,9 +711,14 @@ class MessageRow(tk.Frame):
                 1
             )[0]
 
-            parts = time_part.split(":")
+            parts = time_part.split(
+                ":"
+            )
 
-            hour = int(parts[0])
+            hour = int(
+                parts[0]
+            )
+
             minute = parts[1]
 
             suffix = (
@@ -682,7 +733,10 @@ class MessageRow(tk.Frame):
             if hour == 0:
                 hour = 12
 
-            return f"{hour}:{minute} {suffix}"
+            return (
+                f"{hour}:{minute} "
+                f"{suffix}"
+            )
 
         except (
             ValueError,
@@ -691,19 +745,18 @@ class MessageRow(tk.Frame):
 
             return ""
 
-    # =========================
+    # ========================================================
     # SHOW TIMESTAMP
-    # =========================
+    # ========================================================
 
     def _show_timestamp(self):
 
         self._cancel_hide()
 
-        self.update_idletasks()
+        if not self.winfo_exists():
+            return
 
-        timestamp_width = (
-            self.timestamp.winfo_reqwidth()
-        )
+        self.update_idletasks()
 
         content_width = (
             self.content.winfo_reqwidth()
@@ -713,14 +766,18 @@ class MessageRow(tk.Frame):
             self.content.winfo_reqheight()
         )
 
+        timestamp_width = (
+            self.timestamp.winfo_reqwidth()
+        )
+
         row_width = (
             self.winfo_width()
         )
 
         if row_width <= 1:
 
-            self.after(
-                1,
+            self.timestamp_after_id = self.after(
+                10,
                 self._show_timestamp
             )
 
@@ -730,35 +787,41 @@ class MessageRow(tk.Frame):
             content_height // 2
         )
 
-        if not self.is_me:
+        if self.is_me:
+
+            x = (
+                row_width
+                - content_width
+                - TIMESTAMP_GAP
+                - timestamp_width
+            )
 
             self.timestamp.place(
-                x=(
-                    content_width
-                    + TIMESTAMP_GAP
-                ),
+                x=x,
                 y=center_y,
                 anchor="w"
             )
 
         else:
 
+            x = (
+                content_width
+                + TIMESTAMP_GAP
+            )
+
             self.timestamp.place(
-                x=(
-                    row_width
-                    - content_width
-                    - TIMESTAMP_GAP
-                    - timestamp_width
-                ),
+                x=x,
                 y=center_y,
                 anchor="w"
             )
 
         self.timestamp.lift()
 
-    # =========================
+        self.timestamp_after_id = None
+
+    # ========================================================
     # HIDE TIMESTAMP
-    # =========================
+    # ========================================================
 
     def _schedule_hide(self):
 
@@ -771,7 +834,15 @@ class MessageRow(tk.Frame):
 
     def _hide_timestamp(self):
 
-        self.timestamp.place_forget()
+        if (
+            self.hovering_content
+            or self.hovering_timestamp
+        ):
+            return
+
+        if self.timestamp:
+
+            self.timestamp.place_forget()
 
         self.hide_job = None
 
@@ -791,10 +862,29 @@ class MessageRow(tk.Frame):
 
         self.hide_job = None
 
+        if self.timestamp_after_id is not None:
+
+            try:
+
+                self.after_cancel(
+                    self.timestamp_after_id
+                )
+
+            except tk.TclError:
+                pass
+
+            self.timestamp_after_id = None
+
+    # ========================================================
+    # TIMESTAMP HOVER
+    # ========================================================
+
     def _timestamp_enter(
         self,
         event=None
     ):
+
+        self.hovering_timestamp = True
 
         self._cancel_hide()
 
@@ -803,16 +893,27 @@ class MessageRow(tk.Frame):
         event=None
     ):
 
+        self.hovering_timestamp = False
+
         self._schedule_hide()
 
-    # =========================
+    # ========================================================
     # DESTROY
-    # =========================
+    # ========================================================
 
     def destroy(self):
 
         self._cancel_hide()
         self._cancel_menu_hide()
+
+        if self.context_menu is not None:
+
+            try:
+                self.context_menu.unpost()
+            except tk.TclError:
+                pass
+
+            self.context_menu = None
 
         if self.reaction_picker:
 
@@ -821,19 +922,14 @@ class MessageRow(tk.Frame):
             except Exception:
                 pass
 
-        if self.message_menu:
-
-            try:
-                self.message_menu.close()
-            except Exception:
-                pass
+            self.reaction_picker = None
 
         super().destroy()
 
 
-# =========================
+# ============================================================
 # MESSAGE GROUP
-# =========================
+# ============================================================
 
 class MessageGroup(tk.Frame):
 
@@ -858,9 +954,9 @@ class MessageGroup(tk.Frame):
 
         self._create_group()
 
-    # =========================
-    # CREATE GROUP
-    # =========================
+    # ========================================================
+    # GROUP HEADER
+    # ========================================================
 
     def _create_group(self):
 
@@ -885,9 +981,9 @@ class MessageGroup(tk.Frame):
             )
         )
 
-    # =========================
+    # ========================================================
     # ADD MESSAGE
-    # =========================
+    # ========================================================
 
     def add_message(
         self,
@@ -897,7 +993,6 @@ class MessageGroup(tk.Frame):
     ):
 
         if username is None:
-
             username = self.username
 
         row = MessageRow(
@@ -922,9 +1017,9 @@ class MessageGroup(tk.Frame):
 
         return row
 
-    # =========================
+    # ========================================================
     # REMOVE MESSAGE
-    # =========================
+    # ========================================================
 
     def remove_message(
         self,
@@ -939,9 +1034,9 @@ class MessageGroup(tk.Frame):
 
         row.destroy()
 
-    # =========================
+    # ========================================================
     # MESSAGE COUNT
-    # =========================
+    # ========================================================
 
     def message_count(self):
 
@@ -949,14 +1044,13 @@ class MessageGroup(tk.Frame):
             self.messages
         )
 
-    # =========================
+    # ========================================================
     # LAST MESSAGE
-    # =========================
+    # ========================================================
 
     def last_message(self):
 
         if not self.messages:
-
             return None
 
         return self.messages[-1]

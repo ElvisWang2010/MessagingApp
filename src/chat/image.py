@@ -23,9 +23,9 @@ from database import (
 )
 
 
-# =========================
+# ============================================================
 # SETTINGS
-# =========================
+# ============================================================
 
 MAX_IMAGE_WIDTH = 280
 MAX_IMAGE_HEIGHT = 240
@@ -59,9 +59,9 @@ IMAGE_FORMATS = [
 ]
 
 
-# =========================
+# ============================================================
 # SELECT IMAGE
-# =========================
+# ============================================================
 
 def select_image():
 
@@ -76,9 +76,9 @@ def select_image():
     return path
 
 
-# =========================
+# ============================================================
 # UPLOAD IMAGE
-# =========================
+# ============================================================
 
 def upload_selected_image():
 
@@ -111,9 +111,9 @@ def upload_selected_image():
         return None
 
 
-# =========================
-# IMAGE DISPLAY
-# =========================
+# ============================================================
+# CHAT IMAGE
+# ============================================================
 
 class ChatImage(tk.Frame):
 
@@ -128,7 +128,9 @@ class ChatImage(tk.Frame):
 
         super().__init__(
             parent,
-            bg=CHAT_BACKGROUND
+            bg=CHAT_BACKGROUND,
+            bd=0,
+            highlightthickness=0
         )
 
         self.image_path = image_path
@@ -143,6 +145,10 @@ class ChatImage(tk.Frame):
 
         self._load_image()
 
+    # ========================================================
+    # LOAD IMAGE
+    # ========================================================
+
     def _load_image(self):
 
         if self.image_path:
@@ -153,9 +159,9 @@ class ChatImage(tk.Frame):
 
             self._load_remote_image()
 
-    # =========================
-    # LOCAL
-    # =========================
+    # ========================================================
+    # LOCAL IMAGE
+    # ========================================================
 
     def _load_local_image(self):
 
@@ -170,15 +176,18 @@ class ChatImage(tk.Frame):
         except Exception as error:
 
             print()
-            print("LOCAL IMAGE ERROR:")
+            print("==============================")
+            print("LOCAL IMAGE ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
 
             self._show_error()
 
-    # =========================
-    # REMOTE
-    # =========================
+    # ========================================================
+    # REMOTE IMAGE
+    # ========================================================
 
     def _load_remote_image(self):
 
@@ -189,9 +198,7 @@ class ChatImage(tk.Frame):
                 timeout=10
             ) as response:
 
-                image_data = (
-                    response.read()
-                )
+                image_data = response.read()
 
             self.image = Image.open(
                 BytesIO(image_data)
@@ -202,21 +209,27 @@ class ChatImage(tk.Frame):
         except Exception as error:
 
             print()
-            print("REMOTE IMAGE ERROR:")
+            print("==============================")
+            print("REMOTE IMAGE ERROR")
+            print("==============================")
             print(error)
+            print("==============================")
             print()
 
             self._show_error()
 
-    # =========================
-    # DISPLAY
-    # =========================
+    # ========================================================
+    # DISPLAY IMAGE
+    # ========================================================
 
     def _display_image(self):
 
-        image = self.image.copy()
+        # Make a copy so the original PIL image
+        # isn't modified by thumbnail().
 
-        image.thumbnail(
+        display_image = self.image.copy()
+
+        display_image.thumbnail(
             (
                 MAX_IMAGE_WIDTH,
                 MAX_IMAGE_HEIGHT
@@ -225,35 +238,40 @@ class ChatImage(tk.Frame):
         )
 
         self.photo = ImageTk.PhotoImage(
-            image
+            display_image
         )
 
         self.label = tk.Label(
             self,
             image=self.photo,
             bg=CHAT_BACKGROUND,
-            bd=0
+            bd=0,
+            highlightthickness=0
         )
 
-        self.label.pack()
+        self.label.pack(
+            padx=0,
+            pady=0
+        )
 
         self._bind_hover()
 
-    # =========================
+    # ========================================================
     # HOVER
-    # =========================
+    # ========================================================
 
     def _bind_hover(self):
 
-        self.bind(
-            "<Enter>",
-            self._handle_enter
-        )
+        if self.label is None:
+            return
 
-        self.bind(
-            "<Leave>",
-            self._handle_leave
-        )
+        # IMPORTANT:
+        #
+        # Only the actual image gets hover events.
+        # Do not bind them to both the Frame and Label.
+        #
+        # This prevents rapid Enter/Leave events when
+        # moving quickly between images.
 
         self.label.bind(
             "<Enter>",
@@ -283,13 +301,13 @@ class ChatImage(tk.Frame):
 
             self.on_leave_callback()
 
-    # =========================
-    # ERROR
-    # =========================
+    # ========================================================
+    # ERROR DISPLAY
+    # ========================================================
 
     def _show_error(self):
 
-        label = tk.Label(
+        self.label = tk.Label(
             self,
             text="Unable to load image",
             font=(
@@ -297,7 +315,14 @@ class ChatImage(tk.Frame):
                 10
             ),
             bg=CHAT_BACKGROUND,
-            fg=TEXT
+            fg=TEXT,
+            bd=0,
+            highlightthickness=0
         )
 
-        label.pack()
+        self.label.pack(
+            padx=10,
+            pady=10
+        )
+
+        self._bind_hover()
