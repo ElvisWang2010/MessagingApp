@@ -1,100 +1,79 @@
 import tkinter as tk
 
-from config import (
-    CHAT_BACKGROUND,
-    TEXT,
-    BUTTON
-)
 
-
-class MessageMenu(tk.Frame):
-
-    def __init__(
-        self,
-        parent,
-        can_delete,
-        on_react,
-        on_delete
-    ):
-
-        super().__init__(
-            parent,
-            bg="#FFFFFF",
-            bd=0,
-            highlightthickness=1,
-            highlightbackground="#E8DDE1"
-        )
-
+class MessageMenu:
+    def __init__(self, parent, can_delete, on_react, on_delete):
+        self.parent = parent
+        self.can_delete = can_delete
         self.on_react = on_react
         self.on_delete = on_delete
+        self.menu = None
 
-        self._create(
-            can_delete
+        self._create_menu()
+
+    def _create_menu(self):
+        self.menu = tk.Menu(
+            self.parent,
+            tearoff=False,
+            bg="#FFFFFF",
+            fg="#222222",
+            activebackground="#FFF0F4",
+            activeforeground="#222222",
+            relief="solid",
+            bd=1,
+            font=("Arial", 10)
         )
 
-    def _create(
-        self,
-        can_delete
-    ):
-
-        react_button = tk.Button(
-            self,
-            text="React",
-            font=(
-                "Arial",
-                10
-            ),
-            bg="#FFFFFF",
-            fg=TEXT,
-            activebackground="#FFF1F5",
-            activeforeground=BUTTON,
-            relief="flat",
-            bd=0,
-            anchor="w",
-            cursor="hand2",
+        self.menu.add_command(
+            label="React",
             command=self._react
         )
 
-        react_button.pack(
-            fill="x",
-            padx=4,
-            pady=2
-        )
+        if self.can_delete:
+            self.menu.add_separator()
 
-        if can_delete:
-
-            delete_button = tk.Button(
-                self,
-                text="Delete",
-                font=(
-                    "Arial",
-                    10
-                ),
-                bg="#FFFFFF",
-                fg="#C75A70",
-                activebackground="#FFF1F5",
-                activeforeground="#B13F57",
-                relief="flat",
-                bd=0,
-                anchor="w",
-                cursor="hand2",
+            self.menu.add_command(
+                label="Delete",
                 command=self._delete
             )
 
-            delete_button.pack(
-                fill="x",
-                padx=4,
-                pady=2
+    def show(self):
+        try:
+            x = (
+                self.parent.winfo_rootx()
+                + self.parent.winfo_width()
+                + 4
             )
 
+            y = self.parent.winfo_rooty()
+
+            self.menu.tk_popup(x, y)
+
+        except tk.TclError:
+            self.close()
+
     def _react(self):
+        self.close()
 
         if self.on_react:
-
             self.on_react()
 
     def _delete(self):
+        self.close()
 
         if self.on_delete:
-
             self.on_delete()
+
+    def close(self):
+        if self.menu:
+            try:
+                self.menu.grab_release()
+            except tk.TclError:
+                pass
+
+            try:
+                self.menu.destroy()
+            except tk.TclError:
+                pass
+
+            self.menu = None

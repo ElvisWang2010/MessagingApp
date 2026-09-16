@@ -110,9 +110,9 @@ class MessageRow(tk.Frame):
             )
         )
 
-        # -------------------------
+        # =========================
         # MESSAGE CONTENT
-        # -------------------------
+        # =========================
 
         message_type = self.message.get(
             "message_type",
@@ -146,9 +146,9 @@ class MessageRow(tk.Frame):
                 on_leave=self._schedule_hide_controls
             )
 
-        # -------------------------
-        # THREE DOT MENU BUTTON
-        # -------------------------
+        # =========================
+        # THREE DOT BUTTON
+        # =========================
 
         self.menu_button = tk.Button(
             self.message_line,
@@ -167,9 +167,9 @@ class MessageRow(tk.Frame):
             command=self._open_menu
         )
 
-        # -------------------------
+        # =========================
         # MESSAGE ORDER
-        # -------------------------
+        # =========================
 
         if self.is_me:
 
@@ -199,12 +199,12 @@ class MessageRow(tk.Frame):
                 )
             )
 
-        # Start hidden
+        # Hide initially
         self.menu_button.pack_forget()
 
-        # -------------------------
+        # =========================
         # TIMESTAMP
-        # -------------------------
+        # =========================
 
         self.timestamp = tk.Label(
             self,
@@ -226,20 +226,20 @@ class MessageRow(tk.Frame):
             self._timestamp_leave
         )
 
-        # -------------------------
+        # =========================
         # REACTIONS
-        # -------------------------
+        # =========================
 
         self._load_reactions()
 
-        # -------------------------
+        # =========================
         # HOVER
-        # -------------------------
+        # =========================
 
         self._bind_hover_events()
 
     # =========================
-    # HOVER
+    # HOVER EVENTS
     # =========================
 
     def _bind_hover_events(self):
@@ -297,7 +297,7 @@ class MessageRow(tk.Frame):
         self._schedule_hide_controls()
 
     # =========================
-    # CONTROLS
+    # SHOW CONTROLS
     # =========================
 
     def _show_controls(self):
@@ -330,6 +330,10 @@ class MessageRow(tk.Frame):
                 )
 
         self.menu_button.lift()
+
+    # =========================
+    # HIDE CONTROLS
+    # =========================
 
     def _schedule_hide_controls(self):
 
@@ -372,13 +376,14 @@ class MessageRow(tk.Frame):
         self.menu_hide_job = None
 
     # =========================
-    # MENU
+    # MESSAGE MENU
     # =========================
 
     def _open_menu(self):
 
         self._cancel_menu_hide()
 
+        # If already open, close it
         if self.message_menu:
 
             try:
@@ -390,14 +395,13 @@ class MessageRow(tk.Frame):
 
             return
 
+        # MessageMenu handles its own display
         self.message_menu = MessageMenu(
             self.menu_button,
             can_delete=self.is_me,
             on_react=self._open_reaction_picker,
             on_delete=self._delete
         )
-
-        self.message_menu.show()
 
     # =========================
     # DELETE
@@ -432,7 +436,7 @@ class MessageRow(tk.Frame):
             print()
 
     # =========================
-    # REACTIONS
+    # LOAD REACTIONS
     # =========================
 
     def _load_reactions(self):
@@ -461,12 +465,20 @@ class MessageRow(tk.Frame):
             print(error)
             print()
 
+    # =========================
+    # REFRESH REACTIONS
+    # =========================
+
     def refresh_reactions(self):
 
         if not self.winfo_exists():
             return
 
         self._load_reactions()
+
+    # =========================
+    # DISPLAY REACTIONS
+    # =========================
 
     def _display_reactions(
         self,
@@ -494,18 +506,30 @@ class MessageRow(tk.Frame):
                 if self.is_me
                 else "w"
             ),
-            padx=(
-                2,
-                2
-            ),
+            padx=2,
             pady=(
                 1,
                 0
             )
         )
 
+    # =========================
+    # REACTION PICKER
+    # =========================
+
     def _open_reaction_picker(self):
 
+        # Close menu first
+        if self.message_menu:
+
+            try:
+                self.message_menu.close()
+            except Exception:
+                pass
+
+            self.message_menu = None
+
+        # Toggle picker
         if self.reaction_picker:
 
             self.reaction_picker.destroy()
@@ -531,6 +555,10 @@ class MessageRow(tk.Frame):
                 1
             )
         )
+
+    # =========================
+    # REACTION SELECTED
+    # =========================
 
     def _reaction_selected(
         self,
@@ -566,6 +594,10 @@ class MessageRow(tk.Frame):
             print("REACTION ERROR:")
             print(error)
             print()
+
+    # =========================
+    # REACTION CLICKED
+    # =========================
 
     def _reaction_clicked(
         self,
@@ -839,6 +871,7 @@ class MessageGroup(tk.Frame):
     ):
 
         if username is None:
+
             username = self.username
 
         row = MessageRow(
@@ -881,7 +914,7 @@ class MessageGroup(tk.Frame):
         row.destroy()
 
     # =========================
-    # COUNT
+    # MESSAGE COUNT
     # =========================
 
     def message_count(self):
@@ -897,6 +930,7 @@ class MessageGroup(tk.Frame):
     def last_message(self):
 
         if not self.messages:
+
             return None
 
         return self.messages[-1]
