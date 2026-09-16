@@ -380,28 +380,54 @@ class MessageRow(tk.Frame):
     # =========================
 
     def _open_menu(self):
-
         self._cancel_menu_hide()
 
-        # If already open, close it
-        if self.message_menu:
-
+        if hasattr(self, "_context_menu") and self._context_menu is not None:
             try:
-                self.message_menu.close()
-            except Exception:
+                self._context_menu.unpost()
+            except tk.TclError:
                 pass
-
-            self.message_menu = None
-
+            self._context_menu = None
             return
 
-        # MessageMenu handles its own display
-        self.message_menu = MessageMenu(
-            self.menu_button,
-            can_delete=self.is_me,
-            on_react=self._open_reaction_picker,
-            on_delete=self._delete
+        menu = tk.Menu(
+            self,
+            tearoff=False,
+            bg="#FFFFFF",
+            fg="#222222",
+            activebackground="#FFF0F4",
+            activeforeground="#222222",
+            relief="solid",
+            bd=1,
+            font=("Arial", 10)
         )
+
+        menu.add_command(
+            label="React",
+            command=self._open_reaction_picker
+        )
+
+        if self.is_me:
+            menu.add_separator()
+            menu.add_command(
+                label="Delete",
+                command=self._delete
+            )
+
+        self._context_menu = menu
+
+        try:
+            x = self.menu_button.winfo_rootx()
+            y = (
+                self.menu_button.winfo_rooty()
+                + self.menu_button.winfo_height()
+                + 3
+            )
+
+            menu.post(x, y)
+
+        except tk.TclError:
+            self._context_menu = None
 
     # =========================
     # DELETE
