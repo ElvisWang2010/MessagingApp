@@ -1,63 +1,257 @@
-import os
+import tkinter as tk
 
-from dotenv import load_dotenv
-
-
-# =========================
-# ENVIRONMENT
-# =========================
-
-# Load the .env file located inside src/
-env_path = os.path.join(
-    os.path.dirname(__file__),
-    ".env"
+from tkinter import (
+    filedialog,
+    messagebox
 )
 
-load_dotenv(env_path)
+from io import BytesIO
+from urllib.request import urlopen
+
+from PIL import (
+    Image,
+    ImageTk
+)
+
+from config import (
+    CHAT_BACKGROUND,
+    TEXT
+)
+
+from database import (
+    upload_image
+)
 
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# =========================
+# SETTINGS
+# =========================
+
+MAX_IMAGE_WIDTH = 280
+MAX_IMAGE_HEIGHT = 240
 
 
-if not SUPABASE_URL:
-    raise ValueError(
-        "SUPABASE_URL is missing from src/.env"
+IMAGE_FORMATS = [
+    (
+        "Image files",
+        "*.png *.jpg *.jpeg *.gif *.webp"
+    ),
+    (
+        "PNG files",
+        "*.png"
+    ),
+    (
+        "JPEG files",
+        "*.jpg *.jpeg"
+    ),
+    (
+        "GIF files",
+        "*.gif"
+    ),
+    (
+        "WebP files",
+        "*.webp"
+    ),
+    (
+        "All files",
+        "*.*"
+    )
+]
+
+
+# =========================
+# SELECT IMAGE
+# =========================
+
+def select_image():
+
+    path = filedialog.askopenfilename(
+        title="Choose an image",
+        filetypes=IMAGE_FORMATS
     )
 
+    if not path:
+        return None
 
-if not SUPABASE_KEY:
-    raise ValueError(
-        "SUPABASE_KEY is missing from src/.env"
-    )
-
-
-# =========================
-# APP
-# =========================
-
-APP_TITLE = "chat..."
-
-WINDOW_WIDTH = 500
-WINDOW_HEIGHT = 650
-
-MIN_WIDTH = 400
-MIN_HEIGHT = 500
+    return path
 
 
 # =========================
-# COLORS
+# UPLOAD IMAGE
 # =========================
 
-BACKGROUND = "#FFF7FA"
-HEADER = "#FFB6C9"
-CHAT_BACKGROUND = "#FFFDFE"
-INPUT_BACKGROUND = "#FFFFFF"
+def upload_selected_image():
 
-TEXT = "#3A3034"
-MUTED_TEXT = "#8A7B80"
+    path = select_image()
 
-BUTTON = "#FF8FAB"
-BUTTON_HOVER = "#FF7599"
+    if not path:
+        return None
 
-ERROR = "#D65A70"
+    try:
+
+        return upload_image(
+            path
+        )
+
+    except Exception as error:
+
+        print()
+        print("==============================")
+        print("IMAGE UPLOAD ERROR")
+        print("==============================")
+        print(error)
+        print("==============================")
+        print()
+
+        messagebox.showerror(
+            "Image Upload Failed",
+            str(error)
+        )
+
+        return None
+
+
+# =========================
+# IMAGE DISPLAY
+# =========================
+
+class ChatImage(tk.Frame):
+
+    def __init__(
+        self,
+        parent,
+        image_path=None,
+        image_url=None
+    ):
+
+        super().__init__(
+            parent,
+            bg=CHAT_BACKGROUND
+        )
+
+        self.image_path = image_path
+        self.image_url = image_url
+
+        self.image = None
+        self.photo = None
+        self.label = None
+
+        self._load_image()
+
+    # =========================
+    # LOAD IMAGE
+    # =========================
+
+    def _load_image(self):
+
+        if self.image_path:
+
+            self._load_local_image()
+
+        elif self.image_url:
+
+            self._load_remote_image()
+
+    # =========================
+    # LOCAL
+    # =========================
+
+    def _load_local_image(self):
+
+        try:
+
+            self.image = Image.open(
+                self.image_path
+            )
+
+            self._display_image()
+
+        except Exception as error:
+
+            print()
+            print("LOCAL IMAGE ERROR:")
+            print(error)
+            print()
+
+            self._show_error()
+
+    # =========================
+    # REMOTE
+    # =========================
+
+    def _load_remote_image(self):
+
+        try:
+
+            with urlopen(
+                self.image_url,
+                timeout=10
+            ) as response:
+
+                image_data = (
+                    response.read()
+                )
+
+            self.image = Image.open(
+                BytesIO(image_data)
+            )
+
+            self._display_image()
+
+        except Exception as error:
+
+            print()
+            print("REMOTE IMAGE ERROR:")
+            print(error)
+            print()
+
+            self._show_error()
+
+    # =========================
+    # DISPLAY
+    # =========================
+
+    def _display_image(self):
+
+        image = self.image.copy()
+
+        image.thumbnail(
+            (
+                MAX_IMAGE_WIDTH,
+                MAX_IMAGE_HEIGHT
+            ),
+            Image.Resampling.LANCZOS
+        )
+
+        self.photo = ImageTk.PhotoImage(
+            image
+        )
+
+        self.label = tk.Label(
+            self,
+            image=self.photo,
+            bg=CHAT_BACKGROUND,
+            bd=0,
+            highlightthickness=0
+        )
+
+        self.label.pack()
+
+    # =========================
+    # ERROR
+    # =========================
+
+    def _show_error(self):
+
+        label = tk.Label(
+            self,
+            text="Unable to load image",
+            font=(
+                "Arial",
+                10
+            ),
+            bg=CHAT_BACKGROUND,
+            fg=TEXT
+        )
+
+        label.pack()
