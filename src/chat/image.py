@@ -153,7 +153,7 @@ class ChatImage(tk.Frame):
             self._load_remote_image()
 
     # =========================
-    # LOCAL IMAGE
+    # LOCAL
     # =========================
 
     def _load_local_image(self):
@@ -176,7 +176,7 @@ class ChatImage(tk.Frame):
             self._show_error()
 
     # =========================
-    # REMOTE IMAGE
+    # REMOTE
     # =========================
 
     def _load_remote_image(self):
@@ -208,7 +208,7 @@ class ChatImage(tk.Frame):
             self._show_error()
 
     # =========================
-    # DISPLAY IMAGE
+    # DISPLAY
     # =========================
 
     def _display_image(self):

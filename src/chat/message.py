@@ -40,10 +40,10 @@ MENU_FONT = (
     "bold"
 )
 
-TIMESTAMP_HIDE_DELAY = 250
+TIMESTAMP_HIDE_DELAY = 120
 TIMESTAMP_GAP = 8
 
-MENU_HIDE_DELAY = 300
+MENU_HIDE_DELAY = 250
 MENU_GAP = 6
 
 
@@ -146,14 +146,26 @@ class MessageRow(tk.Frame):
         # THREE DOT BUTTON
         # =========================
 
+        # IMPORTANT:
+        #
+        # The button is ALWAYS packed.
+        #
+        # We never pack_forget() it.
+        #
+        # This means the message geometry never
+        # changes when the mouse moves over it.
+        #
+        # It is simply made invisible by using the
+        # same foreground color as the background.
+
         self.menu_button = tk.Button(
             self.message_line,
             text="•••",
             font=MENU_FONT,
             bg=CHAT_BACKGROUND,
-            fg=MUTED_TEXT,
+            fg=CHAT_BACKGROUND,
             activebackground=CHAT_BACKGROUND,
-            activeforeground=TEXT,
+            activeforeground=CHAT_BACKGROUND,
             relief="flat",
             bd=0,
             highlightthickness=0,
@@ -194,11 +206,6 @@ class MessageRow(tk.Frame):
                     0
                 )
             )
-
-        # Hide button initially.
-        # It stays in the layout system so that
-        # showing it does not change the hover area.
-        self.menu_button.pack_forget()
 
         # =========================
         # TIMESTAMP
@@ -242,16 +249,17 @@ class MessageRow(tk.Frame):
 
     def _bind_hover_events(self):
 
-        # IMPORTANT:
+        # Only the message area controls hover.
         #
-        # Only the message_line controls hover.
+        # Do NOT bind hover separately to:
+        #   - MessageBubble
+        #   - Canvas
+        #   - Image
+        #   - MessageRow
+        #   - content_frame
         #
-        # This frame contains:
-        #   - the message bubble/image
-        #   - the three-dot button
-        #
-        # Therefore moving from the message to the
-        # three dots does NOT trigger a leave event.
+        # Those nested bindings were causing rapid
+        # enter/leave events.
 
         self.message_line.bind(
             "<Enter>",
@@ -259,6 +267,19 @@ class MessageRow(tk.Frame):
         )
 
         self.message_line.bind(
+            "<Leave>",
+            self._hover_leave
+        )
+
+        # The button is also explicitly bound so
+        # moving onto it keeps the controls visible.
+
+        self.menu_button.bind(
+            "<Enter>",
+            self._hover_enter
+        )
+
+        self.menu_button.bind(
             "<Leave>",
             self._hover_leave
         )
@@ -289,29 +310,13 @@ class MessageRow(tk.Frame):
         self._cancel_menu_hide()
         self._cancel_hide()
 
-        if not self.menu_button.winfo_ismapped():
+        # The button is already part of the layout.
+        # We only change its visibility.
 
-            if self.is_me:
-
-                self.menu_button.pack(
-                    side="left",
-                    before=self.content,
-                    padx=(
-                        0,
-                        MENU_GAP
-                    )
-                )
-
-            else:
-
-                self.menu_button.pack(
-                    side="left",
-                    after=self.content,
-                    padx=(
-                        MENU_GAP,
-                        0
-                    )
-                )
+        self.menu_button.config(
+            fg=MUTED_TEXT,
+            activeforeground=TEXT
+        )
 
         self.menu_button.lift()
 
@@ -332,7 +337,17 @@ class MessageRow(tk.Frame):
 
         self._cancel_menu_hide()
 
-        # Close native context menu if open.
+        # DO NOT remove the button from the layout.
+        #
+        # Removing it would cause the message to move.
+
+        self.menu_button.config(
+            fg=CHAT_BACKGROUND,
+            activeforeground=CHAT_BACKGROUND
+        )
+
+        # Close the native context menu if one exists.
+
         if self._context_menu is not None:
 
             try:
@@ -341,8 +356,6 @@ class MessageRow(tk.Frame):
                 pass
 
             self._context_menu = None
-
-        self.menu_button.pack_forget()
 
     def _cancel_menu_hide(self):
 
@@ -368,11 +381,12 @@ class MessageRow(tk.Frame):
 
         self._cancel_menu_hide()
 
-        # Toggle existing menu.
         if self._context_menu is not None:
 
             try:
+
                 self._context_menu.unpost()
+
             except tk.TclError:
                 pass
 
@@ -395,10 +409,18 @@ class MessageRow(tk.Frame):
             )
         )
 
+        # =========================
+        # REACT
+        # =========================
+
         menu.add_command(
             label="React",
             command=self._open_reaction_picker
         )
+
+        # =========================
+        # DELETE
+        # =========================
 
         if self.is_me:
 
@@ -439,7 +461,9 @@ class MessageRow(tk.Frame):
         if self._context_menu is not None:
 
             try:
+
                 self._context_menu.unpost()
+
             except tk.TclError:
                 pass
 
@@ -467,7 +491,9 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("MESSAGE DELETE ERROR:")
+            print(
+                "MESSAGE DELETE ERROR:"
+            )
             print(error)
             print()
 
@@ -497,7 +523,9 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("REACTION LOAD ERROR:")
+            print(
+                "REACTION LOAD ERROR:"
+            )
             print(error)
             print()
 
@@ -555,17 +583,21 @@ class MessageRow(tk.Frame):
 
     def _open_reaction_picker(self):
 
-        # Close menu first.
+        # Close native menu first.
+
         if self._context_menu is not None:
 
             try:
+
                 self._context_menu.unpost()
+
             except tk.TclError:
                 pass
 
             self._context_menu = None
 
         # Toggle picker.
+
         if self.reaction_picker:
 
             self.reaction_picker.destroy()
@@ -627,7 +659,9 @@ class MessageRow(tk.Frame):
         except Exception as error:
 
             print()
-            print("REACTION ERROR:")
+            print(
+                "REACTION ERROR:"
+            )
             print(error)
             print()
 
@@ -827,7 +861,9 @@ class MessageRow(tk.Frame):
         if self._context_menu is not None:
 
             try:
+
                 self._context_menu.unpost()
+
             except tk.TclError:
                 pass
 
@@ -836,7 +872,9 @@ class MessageRow(tk.Frame):
         if self.reaction_picker:
 
             try:
+
                 self.reaction_picker.destroy()
+
             except Exception:
                 pass
 
@@ -845,7 +883,9 @@ class MessageRow(tk.Frame):
         if self.reaction_display:
 
             try:
+
                 self.reaction_display.destroy()
+
             except Exception:
                 pass
 
@@ -920,6 +960,7 @@ class MessageGroup(tk.Frame):
     ):
 
         if username is None:
+
             username = self.username
 
         row = MessageRow(
@@ -978,6 +1019,7 @@ class MessageGroup(tk.Frame):
     def last_message(self):
 
         if not self.messages:
+
             return None
 
         return self.messages[-1]
