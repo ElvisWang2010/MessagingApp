@@ -20,11 +20,7 @@ from config import (
     TEXT,
     MUTED_TEXT,
     BUTTON,
-    BUTTON_HOVER,
-    BORDER,
-    SURFACE,
-    MESSAGE_PADDING_X,
-    MESSAGE_GROUP_SPACING
+    BUTTON_HOVER
 )
 
 from .message import MessageGroup
@@ -35,99 +31,12 @@ from .image import upload_selected_image
 # SETTINGS
 # =========================
 
-HEADER_HEIGHT = 64
+HEADER_HEIGHT = 60
+INPUT_HEIGHT = 55
 
-INPUT_HEIGHT = 72
+MESSAGE_PADDING_X = 12
 
 SCROLL_SPEED = 3
-
-
-# =========================
-# ROUNDED RECTANGLE
-# =========================
-
-def draw_rounded_rectangle(
-    canvas,
-    x1,
-    y1,
-    x2,
-    y2,
-    radius,
-    fill,
-    outline=None,
-    width=1
-):
-
-    if outline is None:
-        outline = fill
-
-    canvas.create_rectangle(
-        x1 + radius,
-        y1,
-        x2 - radius,
-        y2,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
-
-    canvas.create_rectangle(
-        x1,
-        y1 + radius,
-        x2,
-        y2 - radius,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
-
-    canvas.create_arc(
-        x1,
-        y1,
-        x1 + radius * 2,
-        y1 + radius * 2,
-        start=90,
-        extent=90,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
-
-    canvas.create_arc(
-        x2 - radius * 2,
-        y1,
-        x2,
-        y1 + radius * 2,
-        start=0,
-        extent=90,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
-
-    canvas.create_arc(
-        x1,
-        y2 - radius * 2,
-        x1 + radius * 2,
-        y2,
-        start=180,
-        extent=90,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
-
-    canvas.create_arc(
-        x2 - radius * 2,
-        y2 - radius * 2,
-        x2,
-        y2,
-        start=270,
-        extent=90,
-        fill=fill,
-        outline=outline,
-        width=width
-    )
 
 
 # =========================
@@ -159,9 +68,7 @@ class ChatView(tk.Frame):
         self.message_groups = {}
 
         self._create_header()
-
         self._create_chat_area()
-
         self._create_input_area()
 
         self._load_existing_messages()
@@ -169,7 +76,6 @@ class ChatView(tk.Frame):
         start_realtime_listener(
             self._receive_realtime_event
         )
-
 
     # =========================
     # HEADER
@@ -191,25 +97,8 @@ class ChatView(tk.Frame):
             False
         )
 
-
-        # =========================
-        # LEFT SIDE
-        # =========================
-
-        self.header_left = tk.Frame(
-            self.header,
-            bg=HEADER
-        )
-
-        self.header_left.pack(
-            side="left",
-            fill="y",
-            padx=20
-        )
-
-
         self.title_label = tk.Label(
-            self.header_left,
+            self.header,
             text="Elvis & Nysa",
             font=(
                 "Arial",
@@ -221,17 +110,12 @@ class ChatView(tk.Frame):
         )
 
         self.title_label.pack(
-            side="top",
-            anchor="w",
-            pady=(
-                9,
-                0
-            )
+            side="left",
+            padx=18
         )
 
-
         self.status_label = tk.Label(
-            self.header_left,
+            self.header,
             text="♡ connected",
             font=(
                 "Arial",
@@ -242,35 +126,9 @@ class ChatView(tk.Frame):
         )
 
         self.status_label.pack(
-            side="top",
-            anchor="w",
-            pady=(
-                -1,
-                0
-            )
-        )
-
-
-        # =========================
-        # RIGHT SIDE
-        # =========================
-
-        self.header_heart = tk.Label(
-            self.header,
-            text="♡",
-            font=(
-                "Arial",
-                22
-            ),
-            bg=HEADER,
-            fg=BUTTON
-        )
-
-        self.header_heart.pack(
             side="right",
-            padx=20
+            padx=18
         )
-
 
     # =========================
     # CHAT AREA
@@ -288,11 +146,6 @@ class ChatView(tk.Frame):
             expand=True
         )
 
-
-        # =========================
-        # CANVAS
-        # =========================
-
         self.chat_canvas = tk.Canvas(
             self.chat_container,
             bg=CHAT_BACKGROUND,
@@ -306,20 +159,10 @@ class ChatView(tk.Frame):
             expand=True
         )
 
-
-        # =========================
-        # SCROLLBAR
-        # =========================
-
         self.scrollbar = tk.Scrollbar(
             self.chat_container,
             orient="vertical",
-            command=self.chat_canvas.yview,
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            troughcolor=CHAT_BACKGROUND,
-            activebackground="#E8D3DA"
+            command=self.chat_canvas.yview
         )
 
         self.scrollbar.pack(
@@ -327,15 +170,9 @@ class ChatView(tk.Frame):
             fill="y"
         )
 
-
         self.chat_canvas.configure(
             yscrollcommand=self.scrollbar.set
         )
-
-
-        # =========================
-        # MESSAGES
-        # =========================
 
         self.messages_frame = tk.Frame(
             self.chat_canvas,
@@ -351,7 +188,6 @@ class ChatView(tk.Frame):
             )
         )
 
-
         self.messages_frame.bind(
             "<Configure>",
             self._update_scroll_region
@@ -362,9 +198,7 @@ class ChatView(tk.Frame):
             self._resize_messages_frame
         )
 
-
         self._setup_scrolling()
-
 
     # =========================
     # SCROLLING
@@ -384,7 +218,6 @@ class ChatView(tk.Frame):
             add="+"
         )
 
-
     def _enter_chat_area(
         self,
         event=None
@@ -396,7 +229,6 @@ class ChatView(tk.Frame):
             add="+"
         )
 
-
     def _leave_chat_area(
         self,
         event=None
@@ -405,7 +237,6 @@ class ChatView(tk.Frame):
         self.chat_container.unbind_all(
             "<MouseWheel>"
         )
-
 
     def _mouse_wheel(
         self,
@@ -426,7 +257,6 @@ class ChatView(tk.Frame):
                 "units"
             )
 
-
     def _update_scroll_region(
         self,
         event=None
@@ -438,7 +268,6 @@ class ChatView(tk.Frame):
             )
         )
 
-
     def _resize_messages_frame(
         self,
         event
@@ -449,9 +278,8 @@ class ChatView(tk.Frame):
             width=event.width
         )
 
-
     # =========================
-    # INPUT AREA
+    # INPUT
     # =========================
 
     def _create_input_area(self):
@@ -470,10 +298,9 @@ class ChatView(tk.Frame):
             False
         )
 
-
-        # =========================
-        # IMAGE BUTTON
-        # =========================
+        # -------------------------
+        # IMAGE
+        # -------------------------
 
         self.image_button = tk.Button(
             self.input_container,
@@ -496,63 +323,44 @@ class ChatView(tk.Frame):
         self.image_button.pack(
             side="left",
             padx=(
-                12,
-                4
+                10,
+                2
             ),
-            pady=12
+            pady=10
         )
 
-
-        # =========================
-        # INPUT SHELL
-        # =========================
-
-        self.input_shell = tk.Frame(
-            self.input_container,
-            bg=SURFACE,
-            highlightbackground=BORDER,
-            highlightcolor=BORDER,
-            highlightthickness=1,
-            bd=0
-        )
-
-        self.input_shell.pack(
-            side="left",
-            fill="x",
-            expand=True,
-            pady=11
-        )
-
-
-        # =========================
+        # -------------------------
         # ENTRY
-        # =========================
+        # -------------------------
 
         self.message_entry = tk.Entry(
-            self.input_shell,
+            self.input_container,
             font=(
                 "Arial",
                 11
             ),
-            bg=SURFACE,
+            bg=INPUT_BACKGROUND,
             fg=TEXT,
-            insertbackground=BUTTON,
             relief="flat",
             bd=0,
             highlightthickness=0
         )
 
         self.message_entry.pack(
-            fill="both",
+            side="left",
+            fill="x",
             expand=True,
-            padx=13,
-            pady=8
+            padx=(
+                4,
+                6
+            ),
+            pady=10,
+            ipady=8
         )
 
-
-        # =========================
-        # SEND BUTTON
-        # =========================
+        # -------------------------
+        # SEND
+        # -------------------------
 
         self.send_button = tk.Button(
             self.input_container,
@@ -576,52 +384,12 @@ class ChatView(tk.Frame):
         self.send_button.pack(
             side="right",
             padx=(
-                8,
-                14
+                4,
+                12
             ),
-            pady=11,
-            ipadx=10,
-            ipady=5
+            pady=10,
+            ipadx=8
         )
-
-
-        # =========================
-        # HOVER
-        # =========================
-
-        self.send_button.bind(
-            "<Enter>",
-            lambda event: self.send_button.config(
-                bg=BUTTON_HOVER
-            )
-        )
-
-        self.send_button.bind(
-            "<Leave>",
-            lambda event: self.send_button.config(
-                bg=BUTTON
-            )
-        )
-
-
-        self.image_button.bind(
-            "<Enter>",
-            lambda event: self.image_button.config(
-                fg=BUTTON_HOVER
-            )
-        )
-
-        self.image_button.bind(
-            "<Leave>",
-            lambda event: self.image_button.config(
-                fg=BUTTON
-            )
-        )
-
-
-        # =========================
-        # ENTER
-        # =========================
 
         self.message_entry.bind(
             "<Return>",
@@ -629,7 +397,6 @@ class ChatView(tk.Frame):
         )
 
         self.message_entry.focus()
-
 
     # =========================
     # LOAD HISTORY
@@ -659,7 +426,6 @@ class ChatView(tk.Frame):
             print(error)
             print()
 
-
     # =========================
     # ADD MESSAGE
     # =========================
@@ -674,30 +440,25 @@ class ChatView(tk.Frame):
             "id"
         )
 
-
         if message_id is not None:
 
             if message_id in self.message_rows:
-
                 return self.message_rows[
                     message_id
                 ]
-
 
         sender = message.get(
             "sender",
             ""
         )
 
-
         is_me = (
             sender == self.username
         )
 
-
-        # =========================
+        # -------------------------
         # GROUP
-        # =========================
+        # -------------------------
 
         if (
             self.current_group is None
@@ -715,24 +476,22 @@ class ChatView(tk.Frame):
                 fill="x",
                 padx=MESSAGE_PADDING_X,
                 pady=(
-                    MESSAGE_GROUP_SPACING,
+                    6,
                     0
                 )
             )
 
             self.last_sender = sender
 
-
-        # =========================
+        # -------------------------
         # MESSAGE
-        # =========================
+        # -------------------------
 
         row = self.current_group.add_message(
             message,
             username=self.username,
             on_delete=self._delete_message
         )
-
 
         if message_id is not None:
 
@@ -744,14 +503,11 @@ class ChatView(tk.Frame):
                 message_id
             ] = self.current_group
 
-
         if scroll:
 
             self._scroll_to_bottom()
 
-
         return row
-
 
     # =========================
     # DELETE MESSAGE
@@ -770,11 +526,9 @@ class ChatView(tk.Frame):
             message_id
         )
 
-
         if row is None:
 
             return
-
 
         if group is not None:
 
@@ -786,7 +540,6 @@ class ChatView(tk.Frame):
 
             row.destroy()
 
-
         self.message_rows.pop(
             message_id,
             None
@@ -797,9 +550,7 @@ class ChatView(tk.Frame):
             None
         )
 
-
         # Remove empty group
-
         if (
             group is not None
             and group.message_count() == 0
@@ -810,14 +561,11 @@ class ChatView(tk.Frame):
             if self.current_group is group:
 
                 self.current_group = None
-
                 self.last_sender = None
-
 
         self.update_idletasks()
 
         self._update_scroll_region()
-
 
     # =========================
     # SEND TEXT
@@ -831,16 +579,12 @@ class ChatView(tk.Frame):
             .strip()
         )
 
-
         if not content:
-
             return
-
 
         self.send_button.config(
             state="disabled"
         )
-
 
         try:
 
@@ -849,9 +593,7 @@ class ChatView(tk.Frame):
                 content
             )
 
-
             # Display immediately
-
             if inserted:
 
                 for message in inserted:
@@ -861,12 +603,10 @@ class ChatView(tk.Frame):
                         scroll=True
                     )
 
-
             self.message_entry.delete(
                 0,
                 tk.END
             )
-
 
         except Exception as error:
 
@@ -875,12 +615,10 @@ class ChatView(tk.Frame):
             print(error)
             print()
 
-
             messagebox.showerror(
                 "Send Failed",
                 str(error)
             )
-
 
         finally:
 
@@ -889,7 +627,6 @@ class ChatView(tk.Frame):
             )
 
             self.message_entry.focus()
-
 
     # =========================
     # SEND IMAGE
@@ -901,22 +638,17 @@ class ChatView(tk.Frame):
             state="disabled"
         )
 
-
         try:
 
             image_url = upload_selected_image()
 
-
             if not image_url:
-
                 return
-
 
             inserted = send_image_message(
                 self.username,
                 image_url
             )
-
 
             if inserted:
 
@@ -926,7 +658,6 @@ class ChatView(tk.Frame):
                         message,
                         scroll=True
                     )
-
 
         except Exception as error:
 
@@ -938,12 +669,10 @@ class ChatView(tk.Frame):
             print("==============================")
             print()
 
-
             messagebox.showerror(
                 "Image Send Failed",
                 str(error)
             )
-
 
         finally:
 
@@ -952,7 +681,6 @@ class ChatView(tk.Frame):
             )
 
             self.message_entry.focus()
-
 
     # =========================
     # ENTER
@@ -966,7 +694,6 @@ class ChatView(tk.Frame):
         self._send_current_message()
 
         return "break"
-
 
     # =========================
     # REALTIME
@@ -986,7 +713,6 @@ class ChatView(tk.Frame):
             )
         )
 
-
     def _handle_realtime_event(
         self,
         event_type,
@@ -1003,7 +729,6 @@ class ChatView(tk.Frame):
                 "record"
             )
 
-
             if action == "INSERT":
 
                 if record:
@@ -1013,7 +738,6 @@ class ChatView(tk.Frame):
                         scroll=True
                     )
 
-
             elif action == "DELETE":
 
                 if record:
@@ -1022,13 +746,11 @@ class ChatView(tk.Frame):
                         "id"
                     )
 
-
                     if message_id:
 
                         self._delete_message(
                             message_id
                         )
-
 
         elif event_type == "reaction":
 
@@ -1044,16 +766,13 @@ class ChatView(tk.Frame):
                 "action"
             )
 
-
             message_id = None
-
 
             if record:
 
                 message_id = record.get(
                     "message_id"
                 )
-
 
             if (
                 message_id is None
@@ -1064,21 +783,16 @@ class ChatView(tk.Frame):
                     "message_id"
                 )
 
-
             if message_id is None:
-
                 return
-
 
             row = self.message_rows.get(
                 message_id
             )
 
-
             if row:
 
                 row.refresh_reactions()
-
 
     # =========================
     # SCROLL
@@ -1091,18 +805,15 @@ class ChatView(tk.Frame):
             self._move_to_bottom
         )
 
-
     def _move_to_bottom(self):
 
         self.update_idletasks()
-
 
         self.chat_canvas.configure(
             scrollregion=self.chat_canvas.bbox(
                 "all"
             )
         )
-
 
         self.chat_canvas.yview_moveto(
             1.0
@@ -1123,11 +834,9 @@ def create_chat_screen(
         username
     )
 
-
     chat_view.pack(
         fill="both",
         expand=True
     )
-
 
     return chat_view

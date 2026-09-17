@@ -3,9 +3,7 @@ import tkinter as tk
 from config import (
     CHAT_BACKGROUND,
     TEXT,
-    BUTTON,
-    MY_BUBBLE,
-    OTHER_BUBBLE
+    BUTTON
 )
 
 
@@ -13,19 +11,22 @@ from config import (
 # BUBBLE SETTINGS
 # =========================
 
-BUBBLE_PADDING_X = 15
-BUBBLE_PADDING_Y = 9
+BUBBLE_PADDING_X = 13
+BUBBLE_PADDING_Y = 8
 
 BUBBLE_MAX_WIDTH = 310
 
 CORNER_RADIUS = 18
 
-MY_TEXT = "#FFFFFF"
+MY_BUBBLE = BUTTON
+OTHER_BUBBLE = "#FFE8EE"
+
+MY_TEXT = "white"
 OTHER_TEXT = TEXT
 
 
 # =========================
-# ROUNDED RECTANGLE
+# DRAW ROUNDED RECTANGLE
 # =========================
 
 def draw_rounded_rectangle(
@@ -38,7 +39,6 @@ def draw_rounded_rectangle(
     fill
 ):
 
-    # Center
     canvas.create_rectangle(
         x1 + radius,
         y1,
@@ -57,7 +57,6 @@ def draw_rounded_rectangle(
         outline=fill
     )
 
-    # Top-left
     canvas.create_arc(
         x1,
         y1,
@@ -69,7 +68,6 @@ def draw_rounded_rectangle(
         outline=fill
     )
 
-    # Top-right
     canvas.create_arc(
         x2 - radius * 2,
         y1,
@@ -81,7 +79,6 @@ def draw_rounded_rectangle(
         outline=fill
     )
 
-    # Bottom-left
     canvas.create_arc(
         x1,
         y2 - radius * 2,
@@ -93,7 +90,6 @@ def draw_rounded_rectangle(
         outline=fill
     )
 
-    # Bottom-right
     canvas.create_arc(
         x2 - radius * 2,
         y2 - radius * 2,
@@ -143,8 +139,6 @@ class MessageBubble(tk.Frame):
 
         self.canvas = None
 
-        # Kept for compatibility.
-        # Hover is controlled by MessageRow.
         self.on_enter_callback = on_enter
         self.on_leave_callback = on_leave
 
@@ -160,10 +154,6 @@ class MessageBubble(tk.Frame):
             "Arial",
             11
         )
-
-        # =========================
-        # MEASURE TEXT
-        # =========================
 
         temporary = tk.Label(
             self,
@@ -185,14 +175,9 @@ class MessageBubble(tk.Frame):
 
         temporary.destroy()
 
-        # =========================
-        # SIZE
-        # =========================
-
         width = min(
             text_width
             + BUBBLE_PADDING_X * 2,
-
             BUBBLE_MAX_WIDTH
             + BUBBLE_PADDING_X * 2
         )
@@ -201,10 +186,6 @@ class MessageBubble(tk.Frame):
             text_height
             + BUBBLE_PADDING_Y * 2
         )
-
-        # =========================
-        # CANVAS
-        # =========================
 
         self.canvas = tk.Canvas(
             self,
@@ -217,10 +198,6 @@ class MessageBubble(tk.Frame):
 
         self.canvas.pack()
 
-        # =========================
-        # BUBBLE
-        # =========================
-
         draw_rounded_rectangle(
             self.canvas,
             1,
@@ -231,10 +208,6 @@ class MessageBubble(tk.Frame):
             self.background
         )
 
-        # =========================
-        # TEXT
-        # =========================
-
         self.canvas.create_text(
             width / 2,
             height / 2,
@@ -244,6 +217,52 @@ class MessageBubble(tk.Frame):
             width=BUBBLE_MAX_WIDTH,
             justify="left"
         )
+
+        self._bind_hover()
+
+    # =========================
+    # HOVER
+    # =========================
+
+    def _bind_hover(self):
+
+        self.bind(
+            "<Enter>",
+            self._handle_enter
+        )
+
+        self.bind(
+            "<Leave>",
+            self._handle_leave
+        )
+
+        self.canvas.bind(
+            "<Enter>",
+            self._handle_enter
+        )
+
+        self.canvas.bind(
+            "<Leave>",
+            self._handle_leave
+        )
+
+    def _handle_enter(
+        self,
+        event=None
+    ):
+
+        if self.on_enter_callback:
+
+            self.on_enter_callback()
+
+    def _handle_leave(
+        self,
+        event=None
+    ):
+
+        if self.on_leave_callback:
+
+            self.on_leave_callback()
 
     # =========================
     # SIZE
