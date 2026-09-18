@@ -36,7 +36,7 @@ if not SUPABASE_KEY:
 # APP
 # =========================
 
-APP_TITLE = "chat..."
+APP_TITLE = "petal"
 
 WINDOW_WIDTH = 500
 WINDOW_HEIGHT = 650

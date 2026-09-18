@@ -32,7 +32,7 @@ def create_login_screen(window, on_login):
 
     title = tk.Label(
         frame,
-        text="Elvis & Nysa",
+        text="Petal",
         font=("Arial", 28, "bold"),
         bg=BACKGROUND,
         fg=TEXT
