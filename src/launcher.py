@@ -12,6 +12,8 @@ class PetalLauncher:
     TEXT = "#FFFFFF"
     TRANSPARENT = "#000000"
 
+    NOTIFICATION_COLOR = "#FF3B30"
+
     def __init__(self, root, on_open):
 
         self.root = root
@@ -44,6 +46,8 @@ class PetalLauncher:
         )
 
         self.canvas.pack()
+
+        self.notification_visible = False
 
         self._draw_button()
         self._position()
@@ -163,6 +167,38 @@ class PetalLauncher:
             outline=""
         )
 
+        # -----------------------------------------------------
+        # Notification dot
+        # -----------------------------------------------------
+
+        if self.notification_visible:
+
+            self.canvas.create_oval(
+                self.SIZE - 17,
+                3,
+                self.SIZE - 3,
+                17,
+                fill=self.NOTIFICATION_COLOR,
+                outline="#FFFFFF",
+                width=2
+            )
+
+    # ---------------------------------------------------------
+    # Notification
+    # ---------------------------------------------------------
+
+    def show_notification(self):
+
+        self.notification_visible = True
+
+        self._draw_button()
+
+    def clear_notification(self):
+
+        self.notification_visible = False
+
+        self._draw_button()
+
     # ---------------------------------------------------------
     # Hover
     # ---------------------------------------------------------
@@ -241,6 +277,7 @@ class PetalLauncher:
         # If the user simply clicked,
         # open Petal.
         if not self.was_dragged:
+            self.clear_notification()
             self.on_open()
 
     # ---------------------------------------------------------
@@ -262,7 +299,7 @@ class PetalLauncher:
 
         menu.add_command(
             label="Open Petal",
-            command=self.on_open
+            command=self._open_from_menu
         )
 
         menu.add_separator()
@@ -282,6 +319,15 @@ class PetalLauncher:
         finally:
 
             menu.grab_release()
+
+    # ---------------------------------------------------------
+    # Open from menu
+    # ---------------------------------------------------------
+
+    def _open_from_menu(self):
+
+        self.clear_notification()
+        self.on_open()
 
     # ---------------------------------------------------------
     # Exit

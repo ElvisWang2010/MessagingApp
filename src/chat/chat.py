@@ -1,5 +1,4 @@
 import tkinter as tk
-
 from tkinter import messagebox
 
 from database import (
@@ -551,6 +550,7 @@ class ChatView(tk.Frame):
         )
 
         # Remove empty group
+
         if (
             group is not None
             and group.message_count() == 0
@@ -594,6 +594,7 @@ class ChatView(tk.Frame):
             )
 
             # Display immediately
+
             if inserted:
 
                 for message in inserted:
@@ -729,6 +730,10 @@ class ChatView(tk.Frame):
                 "record"
             )
 
+            # -------------------------
+            # NEW MESSAGE
+            # -------------------------
+
             if action == "INSERT":
 
                 if record:
@@ -737,6 +742,29 @@ class ChatView(tk.Frame):
                         record,
                         scroll=True
                     )
+
+                    # -------------------------
+                    # NEW MESSAGE NOTIFICATION
+                    # -------------------------
+
+                    sender = record.get(
+                        "sender"
+                    )
+
+                    # Do not notify for our own messages.
+                    if sender != self.username:
+
+                        # Only notify while Petal
+                        # is minimized.
+                        if self.winfo_toplevel().state() != "normal":
+
+                            self.winfo_toplevel().event_generate(
+                                "<<PetalNewMessage>>"
+                            )
+
+            # -------------------------
+            # DELETE MESSAGE
+            # -------------------------
 
             elif action == "DELETE":
 
@@ -751,6 +779,10 @@ class ChatView(tk.Frame):
                         self._delete_message(
                             message_id
                         )
+
+        # =========================
+        # REACTIONS
+        # =========================
 
         elif event_type == "reaction":
 

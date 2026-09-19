@@ -115,16 +115,16 @@ class PetalApp:
             self.minimize_to_launcher
         )
 
-        # IMPORTANT:
-        #
-        # When Windows restores Petal from the taskbar,
-        # Tkinter receives a <Map> event.
-        #
-        # This lets us detect a taskbar click even though
-        # open_app() was not called.
+        # Detect when Petal is restored from the Windows taskbar.
         self.root.bind(
             "<Map>",
             self.on_window_restored
+        )
+
+        # Detect a new incoming message.
+        self.root.bind(
+            "<<PetalNewMessage>>",
+            self.on_new_message
         )
 
         # ---------------------------------------------------------
@@ -226,6 +226,18 @@ class PetalApp:
             self.launcher.destroy()
 
             self.launcher = None
+
+    # ---------------------------------------------------------
+    # New message notification
+    # ---------------------------------------------------------
+
+    def on_new_message(self, event=None):
+
+        # Only show the notification when Petal is minimized.
+        if self.root.state() != "normal":
+
+            if self.launcher is not None:
+                self.launcher.show_notification()
 
     # ---------------------------------------------------------
     # Window restored from taskbar

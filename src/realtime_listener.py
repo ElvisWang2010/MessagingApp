@@ -27,7 +27,7 @@ async def listen_for_messages(
     )
 
     # =========================
-    # MESSAGE EVENTS
+    # MESSAGES
     # =========================
 
     def handle_message(
@@ -45,6 +45,10 @@ async def listen_for_messages(
             {}
         )
 
+        action = data.get(
+            "type"
+        )
+
         record = data.get(
             "record"
         )
@@ -53,45 +57,14 @@ async def listen_for_messages(
             "old_record"
         )
 
-        event_type = data.get(
-            "type"
-        )
-
-        # -------------------------
-        # INSERT
-        # -------------------------
-
-        if (
-            event_type
-            and str(event_type).upper()
-            == "INSERT"
-        ):
-
-            if record:
-
-                callback(
-                    "message",
-                    {
-                        "action": "INSERT",
-                        "record": record
-                    }
-                )
-
-        # -------------------------
-        # DELETE
-        # -------------------------
-
-        elif (
-            event_type
-            and str(event_type).upper()
-            == "DELETE"
-        ):
+        if record:
 
             callback(
                 "message",
                 {
-                    "action": "DELETE",
-                    "record": old_record or record
+                    "action": action,
+                    "record": record,
+                    "old_record": old_record
                 }
             )
 
@@ -121,6 +94,10 @@ async def listen_for_messages(
             {}
         )
 
+        action = data.get(
+            "type"
+        )
+
         record = data.get(
             "record"
         )
@@ -129,18 +106,12 @@ async def listen_for_messages(
             "old_record"
         )
 
-        event_type = data.get(
-            "type"
-        )
-
         callback(
             "reaction",
             {
+                "action": action,
                 "record": record,
-                "old_record": old_record,
-                "action": str(
-                    event_type
-                ).upper()
+                "old_record": old_record
             }
         )
 
@@ -157,9 +128,11 @@ async def listen_for_messages(
 
     await channel.subscribe()
 
-    print(
-        "Realtime listener connected."
-    )
+    print()
+    print("=================================")
+    print("Realtime listener connected.")
+    print("=================================")
+    print()
 
     # =========================
     # KEEP ALIVE
@@ -182,11 +155,23 @@ def start_realtime_listener(
 
     def run():
 
-        asyncio.run(
-            listen_for_messages(
-                callback
+        try:
+
+            asyncio.run(
+                listen_for_messages(
+                    callback
+                )
             )
-        )
+
+        except Exception as error:
+
+            print()
+            print("==============================")
+            print("REALTIME LISTENER ERROR")
+            print("==============================")
+            print(error)
+            print("==============================")
+            print()
 
     thread = threading.Thread(
         target=run,
