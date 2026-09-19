@@ -22,7 +22,9 @@ class PetalLauncher:
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
 
-        self.window.configure(bg=self.TRANSPARENT)
+        self.window.configure(
+            bg=self.TRANSPARENT
+        )
 
         try:
             self.window.attributes(
@@ -46,24 +48,50 @@ class PetalLauncher:
         self._draw_button()
         self._position()
 
-        # Clicking
-        self.canvas.bind("<Button-1>", self._clicked)
-
         # Hover
-        self.canvas.bind("<Enter>", self._hover_enter)
-        self.canvas.bind("<Leave>", self._hover_leave)
+        self.canvas.bind(
+            "<Enter>",
+            self._hover_enter
+        )
 
-        # Right click
-        self.canvas.bind("<Button-3>", self._show_menu)
+        self.canvas.bind(
+            "<Leave>",
+            self._hover_leave
+        )
 
-        # Dragging
-        self.canvas.bind("<ButtonPress-1>", self._drag_start)
-        self.canvas.bind("<B1-Motion>", self._drag_motion)
+        # Left mouse button
+        self.canvas.bind(
+            "<ButtonPress-1>",
+            self._drag_start
+        )
+
+        self.canvas.bind(
+            "<B1-Motion>",
+            self._drag_motion
+        )
+
+        self.canvas.bind(
+            "<ButtonRelease-1>",
+            self._drag_release
+        )
+
+        # Right mouse button
+        self.canvas.bind(
+            "<Button-3>",
+            self._show_menu
+        )
 
         self.drag_start_x = 0
         self.drag_start_y = 0
+
         self.window_start_x = 0
         self.window_start_y = 0
+
+        self.was_dragged = False
+
+    # ---------------------------------------------------------
+    # Position
+    # ---------------------------------------------------------
 
     def _position(self):
 
@@ -76,6 +104,10 @@ class PetalLauncher:
         self.window.geometry(
             f"{self.SIZE}x{self.SIZE}+{x}+{y}"
         )
+
+    # ---------------------------------------------------------
+    # Draw
+    # ---------------------------------------------------------
 
     def _draw_button(self, background=None):
 
@@ -130,7 +162,7 @@ class PetalLauncher:
             fill=background,
             outline=""
         )
-    
+
     # ---------------------------------------------------------
     # Hover
     # ---------------------------------------------------------
@@ -148,15 +180,7 @@ class PetalLauncher:
         )
 
     # ---------------------------------------------------------
-    # Clicking
-    # ---------------------------------------------------------
-
-    def _clicked(self, event=None):
-
-        self.on_open()
-
-    # ---------------------------------------------------------
-    # Dragging
+    # Drag start
     # ---------------------------------------------------------
 
     def _drag_start(self, event):
@@ -167,15 +191,24 @@ class PetalLauncher:
         self.window_start_x = self.window.winfo_x()
         self.window_start_y = self.window.winfo_y()
 
+        self.was_dragged = False
+
+    # ---------------------------------------------------------
+    # Dragging
+    # ---------------------------------------------------------
+
     def _drag_motion(self, event):
 
         dx = event.x_root - self.drag_start_x
         dy = event.y_root - self.drag_start_y
 
+        # Don't consider tiny mouse movements a drag.
+        if abs(dx) > 3 or abs(dy) > 3:
+            self.was_dragged = True
+
         new_x = self.window_start_x + dx
         new_y = self.window_start_y + dy
 
-        # Keep the launcher inside the screen.
         screen_width = self.window.winfo_screenwidth()
         screen_height = self.window.winfo_screenheight()
 
@@ -200,6 +233,17 @@ class PetalLauncher:
         )
 
     # ---------------------------------------------------------
+    # Mouse release
+    # ---------------------------------------------------------
+
+    def _drag_release(self, event):
+
+        # If the user simply clicked,
+        # open Petal.
+        if not self.was_dragged:
+            self.on_open()
+
+    # ---------------------------------------------------------
     # Right-click menu
     # ---------------------------------------------------------
 
@@ -218,7 +262,7 @@ class PetalLauncher:
 
         menu.add_command(
             label="Open Petal",
-            command=self._clicked
+            command=self.on_open
         )
 
         menu.add_separator()

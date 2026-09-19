@@ -45,7 +45,7 @@ def create_login_screen(window, on_login):
 
     subtitle = tk.Label(
         frame,
-        text="♡ just for us",
+        text="just for you:>",
         font=("Arial", 12),
         bg=BACKGROUND,
         fg=MUTED_TEXT

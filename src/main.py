@@ -1,4 +1,7 @@
 import tkinter as tk
+import ctypes
+import os
+import sys
 
 from config import (
     APP_TITLE,
@@ -13,20 +16,77 @@ from chat import create_chat_screen
 from launcher import PetalLauncher
 
 
+def resource_path(relative_path):
+    """
+    Get the correct path to a bundled resource.
+
+    Works both when running normally from the source code
+    and when running the PyInstaller-built application.
+    """
+
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                ".."
+            )
+        )
+
+    return os.path.join(
+        base_path,
+        relative_path
+    )
+
+
+def sys_platform_is_windows():
+
+    try:
+        return ctypes.windll.kernel32.GetVersion() is not None
+    except Exception:
+        return False
+
+
 class PetalApp:
 
     def __init__(self):
 
-        # Create the main application window
+        # ---------------------------------------------------------
+        # Windows taskbar identity
+        # ---------------------------------------------------------
+
+        if sys_platform_is_windows():
+            try:
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                    "ElvisWang.Petal"
+                )
+            except Exception:
+                pass
+
+        # ---------------------------------------------------------
+        # Create main application window
+        # ---------------------------------------------------------
+
         self.root = tk.Tk()
 
-        # IMPORTANT:
-        # Hide the main window immediately.
-        # This prevents the login/chat window from flashing
-        # on screen while Petal is starting.
-        self.root.withdraw()
+        # ---------------------------------------------------------
+        # Application icon
+        # ---------------------------------------------------------
 
+        try:
+            icon_path = resource_path("petal.ico")
+
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+
+        except Exception:
+            pass
+
+        # ---------------------------------------------------------
         # Window settings
+        # ---------------------------------------------------------
+
         self.root.title(APP_TITLE)
 
         self.root.geometry(
@@ -38,24 +98,63 @@ class PetalApp:
             MIN_HEIGHT
         )
 
-        # Keep track of the launcher
+        # Keep track of launcher
         self.launcher = None
 
-        # Keep track of whether the app is currently open
+        # Keep track of whether app is currently open
         self.app_open = False
 
-        # When the user presses X on the main window,
-        # minimize Petal back to the launcher instead of exiting.
+        # ---------------------------------------------------------
+        # Window events
+        # ---------------------------------------------------------
+
+        # When user presses X on the main window,
+        # minimize Petal back to the launcher.
         self.root.protocol(
             "WM_DELETE_WINDOW",
             self.minimize_to_launcher
         )
 
-        # Create the login screen
+        # IMPORTANT:
+        #
+        # When Windows restores Petal from the taskbar,
+        # Tkinter receives a <Map> event.
+        #
+        # This lets us detect a taskbar click even though
+        # open_app() was not called.
+        self.root.bind(
+            "<Map>",
+            self.on_window_restored
+        )
+
+        # ---------------------------------------------------------
+        # Hide main window BEFORE creating UI
+        # ---------------------------------------------------------
+
+        # This prevents the login/chat window from flashing
+        # on screen during startup.
+        self.root.withdraw()
+
+        # ---------------------------------------------------------
+        # Create login screen while hidden
+        # ---------------------------------------------------------
+
         self.show_login()
 
-        # Create the launcher AFTER the main window has
-        # already been withdrawn.
+        # Make sure Tk finishes creating the UI while
+        # the window is still hidden.
+        self.root.update_idletasks()
+
+        # ---------------------------------------------------------
+        # Put Petal into the Windows taskbar
+        # ---------------------------------------------------------
+
+        self.root.iconify()
+
+        # ---------------------------------------------------------
+        # Create launcher
+        # ---------------------------------------------------------
+
         self.create_launcher()
 
     # ---------------------------------------------------------
@@ -117,19 +216,46 @@ class PetalApp:
         )
 
     # ---------------------------------------------------------
-    # Open Petal
+    # Destroy launcher
+    # ---------------------------------------------------------
+
+    def destroy_launcher(self):
+
+        if self.launcher is not None:
+
+            self.launcher.destroy()
+
+            self.launcher = None
+
+    # ---------------------------------------------------------
+    # Window restored from taskbar
+    # ---------------------------------------------------------
+
+    def on_window_restored(self, event=None):
+
+        # Ignore events that occur while Petal is still minimized.
+        if self.root.state() != "normal":
+            return
+
+        # If the user clicked the Petal taskbar icon,
+        # remove the floating launcher.
+        self.destroy_launcher()
+
+        self.app_open = True
+
+    # ---------------------------------------------------------
+    # Open Petal from launcher
     # ---------------------------------------------------------
 
     def open_app(self):
 
-        # Remove the launcher
-        if self.launcher is not None:
+        # Remove launcher
+        self.destroy_launcher()
 
-            self.launcher.destroy()
-            self.launcher = None
-
-        # Show the actual Petal window
+        # Restore the main application window
         self.root.deiconify()
+
+        self.root.state("normal")
 
         self.root.lift()
 
@@ -143,12 +269,12 @@ class PetalApp:
 
     def minimize_to_launcher(self):
 
-        # Hide the main application window immediately
-        self.root.withdraw()
+        # Keep Petal represented in the Windows taskbar.
+        self.root.iconify()
 
         self.app_open = False
 
-        # Create launcher again
+        # Show launcher again
         self.create_launcher()
 
     # ---------------------------------------------------------

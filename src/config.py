@@ -1,4 +1,5 @@
 import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -7,11 +8,29 @@ from dotenv import load_dotenv
 # ENVIRONMENT
 # =========================
 
-# Load the .env file located inside src/
-env_path = os.path.join(
-    os.path.dirname(__file__),
-    ".env"
-)
+def get_env_path():
+    """
+    Find the .env file both when running normally
+    and when running as a PyInstaller application.
+    """
+
+    if getattr(sys, "frozen", False):
+        # Running as a packaged PyInstaller application
+        base_path = sys._MEIPASS
+        return os.path.join(
+            base_path,
+            "src",
+            ".env"
+        )
+
+    # Running normally from the source code
+    return os.path.join(
+        os.path.dirname(__file__),
+        ".env"
+    )
+
+
+env_path = get_env_path()
 
 load_dotenv(env_path)
 
@@ -36,7 +55,7 @@ if not SUPABASE_KEY:
 # APP
 # =========================
 
-APP_TITLE = "petal"
+APP_TITLE = "Petal"
 
 WINDOW_WIDTH = 500
 WINDOW_HEIGHT = 650
