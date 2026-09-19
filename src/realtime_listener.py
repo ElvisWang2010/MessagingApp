@@ -17,132 +17,194 @@ async def listen_for_messages(
     callback
 ):
 
-    supabase = await acreate_client(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    )
+    print()
+    print("==============================")
+    print("STARTING REALTIME LISTENER")
+    print("==============================")
 
-    channel = supabase.channel(
-        "chat-realtime"
-    )
+    try:
 
-    # =========================
-    # MESSAGES
-    # =========================
+        # -------------------------
+        # CREATE ASYNC CLIENT
+        # -------------------------
 
-    def handle_message(
-        payload
-    ):
-
-        print()
-        print("REALTIME MESSAGE EVENT")
-        print(payload)
-        print("=================================")
-        print()
-
-        data = payload.get(
-            "data",
-            {}
+        supabase = await acreate_client(
+            SUPABASE_URL,
+            SUPABASE_KEY
         )
 
-        action = data.get(
-            "type"
+        print("Supabase async client created.")
+
+        # -------------------------
+        # CREATE CHANNEL
+        # -------------------------
+
+        channel = supabase.channel(
+            "chat-realtime"
         )
 
-        record = data.get(
-            "record"
+        # =========================
+        # MESSAGE EVENTS
+        # =========================
+
+        def handle_message(
+            payload
+        ):
+
+            print()
+            print("==============================")
+            print("REALTIME MESSAGE EVENT")
+            print(payload)
+            print("==============================")
+            print()
+
+            data = payload.get(
+                "data",
+                {}
+            )
+
+            record = data.get(
+                "record"
+            )
+
+            old_record = data.get(
+                "old_record"
+            )
+
+            event_type = data.get(
+                "type"
+            )
+
+            # -------------------------
+            # INSERT
+            # -------------------------
+
+            if (
+                event_type
+                and str(event_type).upper()
+                == "INSERT"
+            ):
+
+                if record:
+
+                    callback(
+                        "message",
+                        {
+                            "action": "INSERT",
+                            "record": record
+                        }
+                    )
+
+            # -------------------------
+            # DELETE
+            # -------------------------
+
+            elif (
+                event_type
+                and str(event_type).upper()
+                == "DELETE"
+            ):
+
+                callback(
+                    "message",
+                    {
+                        "action": "DELETE",
+                        "record": old_record or record
+                    }
+                )
+
+        channel.on_postgres_changes(
+            event="*",
+            schema="public",
+            table="messages",
+            callback=handle_message
         )
 
-        old_record = data.get(
-            "old_record"
-        )
+        # =========================
+        # REACTION EVENTS
+        # =========================
 
-        if record:
+        def handle_reaction(
+            payload
+        ):
+
+            print()
+            print("==============================")
+            print("REALTIME REACTION EVENT")
+            print(payload)
+            print("==============================")
+            print()
+
+            data = payload.get(
+                "data",
+                {}
+            )
+
+            record = data.get(
+                "record"
+            )
+
+            old_record = data.get(
+                "old_record"
+            )
+
+            event_type = data.get(
+                "type"
+            )
 
             callback(
-                "message",
+                "reaction",
                 {
-                    "action": action,
                     "record": record,
-                    "old_record": old_record
+                    "old_record": old_record,
+                    "action": str(
+                        event_type
+                    ).upper()
                 }
             )
 
-    channel.on_postgres_changes(
-        event="*",
-        schema="public",
-        table="messages",
-        callback=handle_message
-    )
+        channel.on_postgres_changes(
+            event="*",
+            schema="public",
+            table="reactions",
+            callback=handle_reaction
+        )
 
-    # =========================
-    # REACTIONS
-    # =========================
+        # =========================
+        # SUBSCRIBE
+        # =========================
 
-    def handle_reaction(
-        payload
-    ):
+        print("Subscribing to Supabase Realtime...")
+
+        response = await channel.subscribe()
 
         print()
-        print("REALTIME REACTION EVENT")
-        print(payload)
-        print("=================================")
+        print("Realtime subscription response:")
+        print(response)
         print()
 
-        data = payload.get(
-            "data",
-            {}
-        )
+        print("==============================")
+        print("REALTIME LISTENER CONNECTED")
+        print("==============================")
+        print()
 
-        action = data.get(
-            "type"
-        )
+        # =========================
+        # KEEP REALTIME RUNNING
+        # =========================
 
-        record = data.get(
-            "record"
-        )
+        await supabase.realtime.listen()
 
-        old_record = data.get(
-            "old_record"
-        )
+    except Exception as error:
 
-        callback(
-            "reaction",
-            {
-                "action": action,
-                "record": record,
-                "old_record": old_record
-            }
-        )
+        print()
+        print("==============================")
+        print("REALTIME LISTENER ERROR")
+        print("==============================")
+        print(error)
+        print("==============================")
+        print()
 
-    channel.on_postgres_changes(
-        event="*",
-        schema="public",
-        table="reactions",
-        callback=handle_reaction
-    )
-
-    # =========================
-    # CONNECT
-    # =========================
-
-    await channel.subscribe()
-
-    print()
-    print("=================================")
-    print("Realtime listener connected.")
-    print("=================================")
-    print()
-
-    # =========================
-    # KEEP ALIVE
-    # =========================
-
-    while True:
-
-        await asyncio.sleep(
-            1
-        )
+        raise
 
 
 # =========================
@@ -167,7 +229,7 @@ def start_realtime_listener(
 
             print()
             print("==============================")
-            print("REALTIME LISTENER ERROR")
+            print("REALTIME THREAD ERROR")
             print("==============================")
             print(error)
             print("==============================")
